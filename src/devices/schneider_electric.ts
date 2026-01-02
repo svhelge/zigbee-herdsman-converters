@@ -450,10 +450,6 @@ const schneiderElectricExtend = {
             commands: {},
             commandsResponse: {},
         }),
-    ####
-    occupancyConfiguration: (): ModernExtend => {
-        const extend = m.enumLookup({
-
     brightness: (): ModernExtend => {
         return m.numeric<"hvacUserInterfaceCfg", SchneiderUserInterfaceCfgCluster>({
             name: "display_brightness_active",
