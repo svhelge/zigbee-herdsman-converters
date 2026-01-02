@@ -450,8 +450,12 @@ const schneiderElectricExtend = {
             commands: {},
             commandsResponse: {},
         }),
-    brightness: () =>
-        m.numeric<"hvacUserInterfaceCfg", SchneiderUserInterfaceCfgCluster>({
+    ####
+    occupancyConfiguration: (): ModernExtend => {
+        const extend = m.enumLookup({
+
+    brightness: (): ModernExtend => {
+        return m.numeric<"hvacUserInterfaceCfg", SchneiderUserInterfaceCfgCluster>({
             name: "display_brightness_active",
             cluster: "hvacUserInterfaceCfg",
             attribute: "brightness",
@@ -461,9 +465,10 @@ const schneiderElectricExtend = {
             valueStep: 1,
             entityCategory: "config",
             zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.SCHNEIDER_ELECTRIC},
-        }),
-    inactiveBrightness: () =>
-        m.numeric<"hvacUserInterfaceCfg", SchneiderUserInterfaceCfgCluster>({
+        });
+    },
+    inactiveBrightness: (): ModernExtend => {
+        return m.numeric<"hvacUserInterfaceCfg", SchneiderUserInterfaceCfgCluster>({
             name: "display_brightness_inactive",
             cluster: "hvacUserInterfaceCfg",
             attribute: "inactiveBrightness",
@@ -474,7 +479,8 @@ const schneiderElectricExtend = {
             valueMax: 100,
             valueStep: 1,
             zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.SCHNEIDER_ELECTRIC},
-        }),
+        });
+    },
     activityTimeout: () =>
         m.numeric<"hvacUserInterfaceCfg", SchneiderUserInterfaceCfgCluster>({
             name: "display_active_timeout",
