@@ -52,6 +52,15 @@ interface SchneiderUserInterfaceCfgCluster {
     commandResponses: never;
 }
 
+interface SchneiderTemperatureMeasurementCluster {
+    attributes: {
+        sensorCorrection: number;
+        temperatureSensorType: number;
+    };
+    commands: never;
+    commandResponses: never;
+}
+
 interface SchneiderMeteringCluster {
     attributes: {
         fixedLoadDemand: number;
@@ -486,8 +495,8 @@ const schneiderElectricExtend = {
                 heatTemperatureLowLimit: {ID: 0x0021, type: Zcl.DataType.INT16, write: true, max: 0x7fff},
                 coolTemperatureHighLimit: {ID: 0x0022, type: Zcl.DataType.INT16, write: true, max: 0x7fff},
                 coolTemperatureLowLimit: {ID: 0x0023, type: Zcl.DataType.INT16, write: true, max: 0x7fff},
-                coolingOutputMode: {ID: 0x0030, type: Zcl.DataType.ENUM8, write: true, max: 0x1},
-                heatingOutputMode: {ID: 0x0031, type: Zcl.DataType.ENUM8, write: true, max: 0x1},
+                coolingOutputMode: {ID: 0x0030, type: Zcl.DataType.ENUM8, write: true},
+                heatingOutputMode: {ID: 0x0031, type: Zcl.DataType.ENUM8, write: true},
                 maximumIdleTime: {ID: 0x0041, type: Zcl.DataType.UINT16, write: true, max: 8784},
                 antiIdleExerciseTime: {ID: 0x0042, type: Zcl.DataType.UINT16, write: true, max: 3600},
                 preferredExerciseTime: {ID: 0x0043, type: Zcl.DataType.UINT16, write: true, max: 1439},
@@ -567,6 +576,32 @@ const schneiderElectricExtend = {
             valueStep: 5,
             zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.SCHNEIDER_ELECTRIC},
         }),
+    customTemperatureMeasurementCluster: () =>
+        m.deviceAddCustomCluster("msTemperatureMeasurement", {
+            ID: Zcl.Clusters.msTemperatureMeasurement.ID,
+            attributes: {
+                sensorCorrection: {
+                    ID: 0xe020,
+                    type: Zcl.DataType.INT16,
+                    manufacturerCode: Zcl.ManufacturerCode.SCHNEIDER_ELECTRIC,
+                    write: true,
+                    min: -900,
+                    max: 900,
+                },
+                temperatureSensorType: {
+                    ID: 0xe021,
+                    type: Zcl.DataType.ENUM8,
+                    write: true,
+                    manufacturerCode: Zcl.ManufacturerCode.SCHNEIDER_ELECTRIC,
+                },
+            },
+            commands: {},
+            commandsResponse: {},
+        }),
+    // temperatureSensorType: () =>
+    //     m.enumlookup<"msTemperatureMeasurement", SchneiderTemperatureMeasurementCluster>({
+
+    //     }),
     customMeteringCluster: () =>
         m.deviceAddCustomCluster("seMetering", {
             ID: Zcl.Clusters.seMetering.ID,
@@ -2110,9 +2145,27 @@ export const definitions: DefinitionWithExtend[] = [
                 access: "ALL",
                 lookup: {Disabled: 0, Relay: 1},
             }),
+            schneiderElectricExtend.customTemperatureMeasurementCluster(),
+            // m.numeric<"msTemperatureMeasurement", SchneiderTemperatureMeasurementCluster>({
+            m.numeric({
+                name: "temperature_sensor_correction",
+                cluster: "msTemperatureMeasurement",
+                // attribute: "sensorCorrection",
+                attribute: {ID: 0xe020, type: Zcl.DataType.INT16},
+                description: "This is a user correction, possibly negative, to be added to the temperature measured by the sensor.",
+                unit: "°C",
+                scale: 100,
+                valueMin: -9,
+                valueMax: 9,
+                valueStep: 0.01,
+                // endpointNames: ["3"],
+                entityCategory: "config",
+                zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.SCHNEIDER_ELECTRIC},
+            }),
             m.enumLookup({
                 name: "temperature_sensor_type",
                 cluster: "msTemperatureMeasurement",
+                // attribute: "temperatureSensorType",
                 attribute: {ID: 0xe021, type: Zcl.DataType.ENUM8},
                 description: "This is used to specify the type of temperature sensor connected to this input",
                 entityCategory: "config",
@@ -2129,7 +2182,7 @@ export const definitions: DefinitionWithExtend[] = [
             }),
             m.enumLookup({
                 name: "temperature_display_mode",
-                lookup: {celsius: 0, fahrenheit: 1},
+                lookup: {celsius: 0},
                 cluster: "hvacUserInterfaceCfg",
                 attribute: "tempDisplayMode",
                 description: "The unit of the temperature displayed on the device screen.",
