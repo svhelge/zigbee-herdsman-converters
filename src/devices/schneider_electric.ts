@@ -74,6 +74,8 @@ interface SchneiderThermostatCluster {
         controlStatus: number;
         localTemperatureSourceSelect: number;
         controlType: number;
+        thermostatApplication: number;
+        heatingEmitter: number;
     };
     commands: never;
     commandResponses: never;
@@ -477,6 +479,28 @@ const schneiderElectricExtend = {
 
         return extend;
     },
+    thermostatWithPower: (options: m.ThermostatArgs): ModernExtend => {
+        const extend = m.thermostat(options);
+        const climateExpose = extend.exposes.find((exp) => typeof exp !== "function" && "type" in exp && exp.type === "climate");
+        if (climateExpose) {
+            climateExpose.withRunningState(["idle", "heat"]);
+            const runningStateFeature = climateExpose.features.find((f) => typeof f !== "function" && "name" in f && f.name === "running_state");
+            if (runningStateFeature) {
+                runningStateFeature.withDescription("Running state based on power draw (>10W)");
+            }
+        }
+        extend.fromZigbee.push({
+            cluster: "seMetering",
+            type: ["attributeReport", "readResponse"],
+            convert: (model, msg, publish, options, meta) => {
+                if ("instantaneousDemand" in msg.data) {
+                    const w = Math.max(0, Number(msg.data.instantaneousDemand));
+                    return {running_state: w > 10 ? "heat" : "idle"};
+                }
+            },
+        });
+        return extend;
+    },
     addHeatingCoolingOutputClusterServer: () =>
         m.deviceAddCustomCluster("HeatingCoolingOutputClusterServer", {
             ID: 0xff23,
@@ -651,6 +675,18 @@ const schneiderElectricExtend = {
                     manufacturerCode: Zcl.ManufacturerCode.SCHNEIDER_ELECTRIC,
                     write: true,
                 },
+                thermostatApplication: {
+                    ID: 0xe216,
+                    type: Zcl.DataType.ENUM8,
+                    manufacturerCode: Zcl.ManufacturerCode.SCHNEIDER_ELECTRIC,
+                    write: true,
+                },
+                heatingEmitter: {
+                    ID: 0xe21a,
+                    type: Zcl.DataType.ENUM8,
+                    manufacturerCode: Zcl.ManufacturerCode.SCHNEIDER_ELECTRIC,
+                    write: true,
+                },
             },
             commands: {},
             commandsResponse: {},
@@ -693,6 +729,27 @@ const schneiderElectricExtend = {
                 "0 (On/Off), 1 (PI) and 0xff (None) supported. This specifies the type of control algorithm to be used to regulate temperature.",
             entityCategory: "config",
             lookup: {"On/Off": 0, PI: 1, None: 0xff},
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.SCHNEIDER_ELECTRIC},
+        }),
+    thermostatApplication: () =>
+        m.enumLookup<"hvacThermostat", SchneiderThermostatCluster>({
+            name: "thermostat_application",
+            cluster: "hvacThermostat",
+            attribute: "thermostatApplication",
+            description:
+                "This is used to specify what the Thermostat is regulating. 'Occupied Space' - heating where the room temperature is used as the control value, 'Floor' - Floor warming applications where the temperature of the floor itself is regulated.",
+            entityCategory: "config",
+            lookup: {"Occupied Space": 0, Floor: 1, "Not known": 0xff},
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.SCHNEIDER_ELECTRIC},
+        }),
+    heatingEmitter: () =>
+        m.enumLookup<"hvacThermostat", SchneiderThermostatCluster>({
+            name: "heating_emitter",
+            cluster: "hvacThermostat",
+            attribute: "heatingEmitter",
+            description: "This is used to specify the heat emitter.",
+            entityCategory: "config",
+            lookup: {None: 0, Radiator: 1, "Fan Assisted Radiator": 2, "Radiant Panel": 3, Floor: 4, "Not specified": 0xff},
             zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.SCHNEIDER_ELECTRIC},
         }),
 };
@@ -2105,7 +2162,7 @@ export const definitions: DefinitionWithExtend[] = [
         vendor: "Schneider Electric",
         description: "Smart thermostat",
         extend: [
-            m.thermostat({
+            schneiderElectricExtend.thermostatWithPower({
                 localTemperature: {
                     values: {
                         description: "The temperature measured by the selected sensor (see 'Local temperature source select', Ambient or External).",
@@ -2124,7 +2181,10 @@ export const definitions: DefinitionWithExtend[] = [
                     values: ["off", "heat"],
                 },
                 piHeatingDemand: {
-                    values: ea.STATE_GET,
+                    values: true,
+                },
+                ctrlSeqeOfOper: {
+                    values: ["cooling_only", "heating_only"],
                 },
             }),
             m.electricityMeter({
@@ -2144,6 +2204,8 @@ export const definitions: DefinitionWithExtend[] = [
             schneiderElectricExtend.localTemperatureSourceSelect(),
             schneiderElectricExtend.controlType(),
             schneiderElectricExtend.controlStatus(),
+            schneiderElectricExtend.thermostatApplication(),
+            schneiderElectricExtend.heatingEmitter(),
             schneiderElectricExtend.addHeatingCoolingOutputClusterServer(),
             m.enumLookup({
                 name: "heating_output_mode",
@@ -2195,8 +2257,8 @@ export const definitions: DefinitionWithExtend[] = [
                 lookup: {celsius: 0},
                 cluster: "hvacUserInterfaceCfg",
                 attribute: "tempDisplayMode",
-                description: "The unit of the temperature displayed on the device screen.",
-                entityCategory: "config",
+                description: "The unit of the temperature displayed on the device screen. Celsius is the only supported unit.",
+                entityCategory: "diagnostic",
             }),
             m.binary({
                 name: "child_lock",
