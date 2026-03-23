@@ -8,10 +8,238 @@ import * as m from "../lib/modernExtend";
 import * as reporting from "../lib/reporting";
 import type {DefinitionWithExtend, Fz, KeyValue, Tz} from "../lib/types";
 import * as utils from "../lib/utils";
-import type {ElkoThermostatCluster} from "./elko";
 
 const e = exposes.presets;
 const ea = exposes.access;
+
+interface CtmGroupConfig {
+    attributes: {
+        groupId: number;
+    };
+    commands: never;
+    commandResponses: never;
+}
+interface CtmThermostatCluster {
+    attributes: {
+        ctmLoad: number;
+        ctmDisplayText: string;
+        ctmSensor: number;
+        ctmRegulatorMode: number;
+        ctmPowerStatus: number;
+        ctmMeanPower: number;
+        ctmExternalTemp: number;
+        ctmNightSwitching: number;
+        ctmFrostGuard: number;
+        ctmChildLock: number;
+        ctmMaxFloorTemp: number;
+        ctmRelayState: number;
+        ctmRegulatorSetpoint: number;
+        ctmRegulationMode: number;
+        ctmOperationMode: number;
+        ctmMaxFloorGuard: number;
+        ctmWeeklyTimer: number;
+        ctmFrostGuardSetpoint: number;
+        ctmExternalTemp2: number;
+        ctmExternalSensorSource: number;
+        ctmAirTemp: number;
+        ctmFloorSensorError: number;
+        ctmAirSensorError: number;
+    };
+    commands: never;
+    commandResponses: never;
+}
+
+interface CtmGenOnOffCluster {
+    attributes: {
+        deviceMode: number;
+        deviceEnabled: number;
+        childLock: number;
+        currentFlag: number;
+        relayState: number;
+    };
+    commands: never;
+    commandResponses: never;
+}
+
+const ctmExtend = {
+    addCtmGroupConfigCluster: () =>
+        m.deviceAddCustomCluster("ctmGroupConfig", {
+            name: "ctmGroupConfig",
+            ID: 0xfea7,
+            manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS,
+            attributes: {
+                groupId: {name: "groupId", ID: 0x0000, type: Zcl.DataType.INT16, manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS},
+            },
+            commands: {},
+            commandsResponse: {},
+        }),
+    addCtmSoveGuardCluster: () =>
+        m.deviceAddCustomCluster("ctmSoveGuard", {
+            name: "ctmSoveGuard",
+            ID: 0xffc9, // 65481
+            manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS,
+            attributes: {
+                alarmStatus: {name: "alarmStatus", ID: 0x0001, type: Zcl.DataType.UINT8, manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS},
+                batteryLow: {name: "batteryLow", ID: 0x0002, type: Zcl.DataType.UINT8, manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS},
+                stoveTemperature: {
+                    name: "stoveTemperature",
+                    ID: 0x0003,
+                    type: Zcl.DataType.INT16,
+                    manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS,
+                },
+                ambientTemperature: {
+                    name: "ambientTemperature",
+                    ID: 0x0004,
+                    type: Zcl.DataType.INT16,
+                    manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS,
+                },
+                active: {name: "active", ID: 0x0005, type: Zcl.DataType.UINT8, manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS},
+                runtime: {name: "runtime", ID: 0x0006, type: Zcl.DataType.UINT32, manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS},
+                runtimeTimeout: {
+                    name: "runtimeTimeout",
+                    ID: 0x0007,
+                    type: Zcl.DataType.UINT32,
+                    manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS,
+                },
+                resetReason: {name: "resetReason", ID: 0x0008, type: Zcl.DataType.UINT8, manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS},
+                dipSwitch: {name: "dipSwitch", ID: 0x0009, type: Zcl.DataType.UINT8, manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS},
+                swVersion: {name: "swVersion", ID: 0x000a, type: Zcl.DataType.UINT16, manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS},
+                hwVersion: {name: "hwVersion", ID: 0x000b, type: Zcl.DataType.UINT16, manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS},
+                bootloaderVersion: {
+                    name: "bootloaderVersion",
+                    ID: 0x000c,
+                    type: Zcl.DataType.UINT16,
+                    manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS,
+                },
+                model: {name: "model", ID: 0x000d, type: Zcl.DataType.CHAR_STR, manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS},
+                relayAddress: {name: "relayAddress", ID: 0x0010, type: Zcl.DataType.UINT16, manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS},
+
+                currentFlag: {name: "currentFlag", ID: 0x0100, type: Zcl.DataType.UINT8, manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS},
+                relayCurrent: {name: "relayCurrent", ID: 0x0101, type: Zcl.DataType.UINT16, manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS},
+                relayStatus: {name: "relayStatus", ID: 0x0102, type: Zcl.DataType.UINT8, manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS},
+                externalButton: {
+                    name: "externalButton",
+                    ID: 0x0103,
+                    type: Zcl.DataType.UINT8,
+                    manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS,
+                },
+                relayAlarm: {name: "relayAlarm", ID: 0x0104, type: Zcl.DataType.UINT8, manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS},
+                relayAlarmStatus: {
+                    name: "relayAlarmStatus",
+                    ID: 0x0105,
+                    type: Zcl.DataType.UINT8,
+                    manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS,
+                },
+            },
+            commands: {},
+            commandsResponse: {},
+        }),
+
+    // case "alarm_status":
+    //     await entity.read(0xffc9, [0x0001], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "battery_low":
+    //     await entity.read(0xffc9, [0x0002], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "stove_temperature":
+    //     await entity.read(0xffc9, [0x0003], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "ambient_temperature":
+    //     await entity.read(0xffc9, [0x0004], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "active":
+    //     await entity.read(0xffc9, [0x0005], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "runtime":
+    //     await entity.read(0xffc9, [0x0006], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "runtime_timeout":
+    //     await entity.read(0xffc9, [0x0007], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "reset_reason":
+    //     await entity.read(0xffc9, [0x0008], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "dip_switch":
+    //     await entity.read(0xffc9, [0x0009], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "sw_version":
+    //     await entity.read(0xffc9, [0x000a], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "hw_version":
+    //     await entity.read(0xffc9, [0x000b], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "bootloader_version":
+    //     await entity.read(0xffc9, [0x000c], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "model":
+    //     await entity.read(0xffc9, [0x000d], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "relay_address":
+    //     await entity.read(0xffc9, [0x0010], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "current_flag":
+    //     await entity.read(0xffc9, [0x0100], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "relay_current":
+    //     await entity.read(0xffc9, [0x0101], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "relay_status":
+    //     await entity.read(0xffc9, [0x0102], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "external_button":
+    //     await entity.read(0xffc9, [0x0103], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "relay_alarm":
+    //     await entity.read(0xffc9, [0x0104], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+    // case "relay_alarm_status":
+    //     await entity.read(0xffc9, [0x0105], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+
+    addCtmGenOnOffCluster: () =>
+        m.deviceAddCustomCluster("genOnOff", {
+            name: "genOnOff",
+            ID: Zcl.Clusters.genOnOff.ID,
+            attributes: {
+                deviceMode: {name: "deviceMode", ID: 0x2200, type: Zcl.DataType.ENUM8},
+                // const deviceModeLookup = {0: "astro_clock", 1: "timer", 2: "daily_timer", 3: "weekly_timer"};
+                deviceEnabled: {name: "deviceEnabled", ID: 0x2201, type: Zcl.DataType.BOOLEAN},
+                childLock: {name: "childLock", ID: 0x2202, type: Zcl.DataType.BOOLEAN},
+                currentFlag: {name: "currentFlag", ID: 0x5000, type: Zcl.DataType.BOOLEAN},
+                relayState: {name: "relayState", ID: 0x5001, type: Zcl.DataType.BOOLEAN},
+            },
+            commands: {},
+            commandsResponse: {},
+        }),
+    addCtmToHvacThermostatCluster: () =>
+        m.deviceAddCustomCluster("hvacThermostat", {
+            name: "hvacThermostat",
+            ID: Zcl.Clusters.hvacThermostat.ID,
+            attributes: {
+                ctmLoad: {name: "ctmLoad", ID: 0x0401, type: Zcl.DataType.UINT16, write: true, max: 0xffff},
+                ctmDisplayText: {name: "ctmDisplayText", ID: 0x0402, type: Zcl.DataType.CHAR_STR, write: true},
+                ctmSensor: {name: "ctmSensor", ID: 0x0403, type: Zcl.DataType.ENUM8, write: true, max: 0xff},
+                ctmRegulatorMode: {name: "ctmRegulatorMode", ID: 0x0405, type: Zcl.DataType.BOOLEAN, write: true},
+                ctmPowerStatus: {name: "ctmPowerStatus", ID: 0x0406, type: Zcl.DataType.BOOLEAN, write: true},
+                ctmMeanPower: {name: "ctmMeanPower", ID: 0x0408, type: Zcl.DataType.UINT16, write: true, max: 0xffff},
+                ctmExternalTemp: {name: "ctmExternalTemp", ID: 0x0409, type: Zcl.DataType.INT16, write: true, min: -32768, max: 32767},
+                ctmNightSwitching: {name: "ctmNightSwitching", ID: 0x0411, type: Zcl.DataType.BOOLEAN, write: true},
+                ctmFrostGuard: {name: "ctmFrostGuard", ID: 0x0412, type: Zcl.DataType.BOOLEAN, write: true},
+                ctmChildLock: {name: "ctmChildLock", ID: 0x0413, type: Zcl.DataType.BOOLEAN, write: true},
+                ctmMaxFloorTemp: {name: "ctmMaxFloorTemp", ID: 0x0414, type: Zcl.DataType.UINT8, write: true, max: 0xff},
+                ctmRelayState: {name: "ctmRelayState", ID: 0x0415, type: Zcl.DataType.BOOLEAN, write: true},
+
+                ctmRegulatorSetpoint: {name: "ctmRegulatorSetpoint", ID: 0x0420, type: Zcl.DataType.UINT8, write: true}, // datatype??
+                //     // Regulation mode    const regulationModeLookup = {0: "thermostat", 1: "regulator", 2: "zzilent"};
+                //     result.regulation_mode = utils.getFromLookup(data[0x0421], regulationModeLookup);
+                ctmRegulationMode: {name: "ctmRegulationMode", ID: 0x0421, type: Zcl.DataType.ENUM8, write: true}, // type: Zcl.DataType.UINT8
+                //     // Operation mode
+                //     const presetLookup = {0: "off", 1: "away", 2: "sleep", 3: "home"};
+                //     const systemModeLookup = {0: "off", 1: "off", 2: "off", 3: "heat"};
+                //     result.preset = utils.getFromLookup(data[0x0422], presetLookup);
+                //     result.system_mode = utils.getFromLookup(data[0x0422], systemModeLookup);
+                ctmOperationMode: {name: "ctmOperationMode", ID: 0x0422, type: Zcl.DataType.ENUM8, write: true}, // Zcl.DataType.UINT8
+                //     Maximum floor temp guard    result.max_floor_guard = data[0x0423] ? "ON" : "OFF";
+                ctmMaxFloorGuard: {name: "ctmMaxFloorGuard", ID: 0x0423, type: Zcl.DataType.BOOLEAN, write: true},
+                // Weekly timer enabled     result.weekly_timer = data[0x0424] ? "ON" : "OFF";
+                ctmWeeklyTimer: {name: "ctmWeeklyTimer", ID: 0x0424, type: Zcl.DataType.BOOLEAN, write: true},
+                //     // Frost guard setpoint      result.frost_guard_setpoint = data[0x0425];
+                ctmFrostGuardSetpoint: {name: "ctmFrostGuardSetpoint", ID: 0x0425, type: Zcl.DataType.INT16, write: true},
+                //     // External temperature    result.external_temp = utils.precisionRound(data[0x0426] as number, 2) / 100;
+                ctmExternalTemp2: {name: "ctmExternalTemp2", ID: 0x0426, type: Zcl.DataType.INT16}, // ??
+                //     // External sensor source      result.exteral_sensor_source = data[0x0428];
+                ctmExternalSensorSource: {name: "ctmExternalSensorSource", ID: 0x0428, type: Zcl.DataType.ENUM8}, // ??
+                //     // Current air temperature   result.air_temp = utils.precisionRound(data[0x0429] as number, 2) / 100;
+                ctmAirTemp: {name: "ctmAirTemp", ID: 0x0429, type: Zcl.DataType.INT16}, // Zcl.DataType.INT16
+                //     // Floor Sensor Error    result.floor_sensor_error = data[0x042b] ? "error" : "ok";
+                ctmFloorSensorError: {name: "ctmFloorSensorError", ID: 0x042b, type: Zcl.DataType.BOOLEAN}, // ??
+                //     // External Air Sensor Error   result.exteral_sensor_error = data[0x042c] ? "error" : "ok";
+                ctmAirSensorError: {name: "ctmAirSensorError", ID: 0x042c, type: Zcl.DataType.BOOLEAN},
+            },
+            commands: {},
+            commandsResponse: {},
+        }),
+};
 
 const fzLocal = {
     ctm_mbd_device_enabled: {
@@ -26,97 +254,86 @@ const fzLocal = {
 
             return result;
         },
-    } satisfies Fz.Converter<"genOnOff", undefined, ["attributeReport", "readResponse"]>,
+    } satisfies Fz.Converter<"genOnOff", CtmGenOnOffCluster, ["attributeReport", "readResponse"]>,
     ctm_device_mode: {
         cluster: "genOnOff",
         type: ["attributeReport", "readResponse"],
         convert: (model, msg, publish, options, meta) => {
             const result: KeyValue = {};
             const data = msg.data;
-            if (data[0x2200] !== undefined) {
+            if (data.deviceMode !== undefined) {
                 const deviceModeLookup = {0: "astro_clock", 1: "timer", 2: "daily_timer", 3: "weekly_timer"};
-                result.device_mode = utils.getFromLookup(data[0x2200], deviceModeLookup);
+                result.device_mode = utils.getFromLookup(data.deviceMode, deviceModeLookup);
             }
 
             return result;
         },
-    } satisfies Fz.Converter<"genOnOff", undefined, ["attributeReport", "readResponse"]>,
+    } satisfies Fz.Converter<"genOnOff", CtmGenOnOffCluster, ["attributeReport", "readResponse"]>,
     ctm_device_enabled: {
         cluster: "genOnOff",
         type: ["attributeReport", "readResponse"],
         convert: (model, msg, publish, options, meta) => {
             const result: KeyValue = {};
             const data = msg.data;
-            if (data[0x2201] !== undefined) {
-                result.device_enabled = data[0x2201] ? "ON" : "OFF";
+            if (data.deviceEnabled !== undefined) {
+                result.device_enabled = data.deviceEnabled ? "ON" : "OFF";
             }
 
             return result;
         },
-    } satisfies Fz.Converter<"genOnOff", undefined, ["attributeReport", "readResponse"]>,
+    } satisfies Fz.Converter<"genOnOff", CtmGenOnOffCluster, ["attributeReport", "readResponse"]>,
     ctm_child_lock: {
         cluster: "genOnOff",
         type: ["attributeReport", "readResponse"],
         convert: (model, msg, publish, options, meta) => {
             const result: KeyValue = {};
             const data = msg.data;
-            if (data[0x2202] !== undefined) {
-                result.child_lock = data[0x2202] ? "locked" : "unlocked";
+            if (data.childLock !== undefined) {
+                result.child_lock = data.childLock ? "locked" : "unlocked";
             }
 
             return result;
         },
-    } satisfies Fz.Converter<"genOnOff", undefined, ["attributeReport", "readResponse"]>,
+    } satisfies Fz.Converter<"genOnOff", CtmGenOnOffCluster, ["attributeReport", "readResponse"]>,
     ctm_current_flag: {
         cluster: "genOnOff",
         type: ["attributeReport", "readResponse"],
         convert: (model, msg, publish, options, meta) => {
             const result: KeyValue = {};
             const data = msg.data;
-            if (data[0x5000] !== undefined) {
-                result.current_flag = data[0x5000];
+            if (data.currentFlag !== undefined) {
+                result.current_flag = data.currentFlag;
             }
 
             return result;
         },
-    } satisfies Fz.Converter<"genOnOff", undefined, ["attributeReport", "readResponse"]>,
+    } satisfies Fz.Converter<"genOnOff", CtmGenOnOffCluster, ["attributeReport", "readResponse"]>,
     ctm_relay_state: {
         cluster: "genOnOff",
         type: ["attributeReport", "readResponse"],
         convert: (model, msg, publish, options, meta) => {
             const result: KeyValue = {};
             const data = msg.data;
-            if (data[0x5001] !== undefined) {
-                result.state = data[0x5001] ? "ON" : "OFF";
+            if (data.relayState !== undefined) {
+                result.state = data.relayState ? "ON" : "OFF";
             }
 
             return result;
         },
-    } satisfies Fz.Converter<"genOnOff", undefined, ["attributeReport", "readResponse"]>,
+    } satisfies Fz.Converter<"genOnOff", CtmGenOnOffCluster, ["attributeReport", "readResponse"]>,
     ctm_thermostat: {
         cluster: "hvacThermostat",
         type: ["attributeReport", "readResponse"],
         convert: (model, msg, publish, options, meta) => {
             const result: KeyValue = {};
             const data = msg.data;
-            if (data[0x0401] !== undefined) {
-                // Load
-                result.load = data[0x0401];
+            if (data.ctmLoad !== undefined) {
+                result.load = data.ctmLoad;
             }
-            if (data.elkoLoad !== undefined) {
-                // Load
-                result.load = data.elkoLoad;
+            if (data.ctmDisplayText !== undefined) {
+                result.display_text = data.ctmDisplayText;
             }
-            if (data[0x0402] !== undefined) {
-                // Display text
-                result.display_text = data[0x0402];
-            }
-            if (data.elkoDisplayText !== undefined) {
-                // Display text
-                result.display_text = data.elkoDisplayText;
-            }
-            if (data[0x0403] !== undefined) {
-                // Sensor
+            if (data.ctmSensor !== undefined) {
                 const sensorModeLookup = {
                     0: "air",
                     1: "floor",
@@ -126,160 +343,97 @@ const fzLocal = {
                     5: "mv_external",
                     6: "mv_regulator",
                 };
-                result.sensor = utils.getFromLookup(data[0x0403], sensorModeLookup);
+                result.sensor = utils.getFromLookup(data.ctmSensor, sensorModeLookup);
             }
-            if (data.elkoSensor !== undefined) {
-                // Sensor
-                const sensorModeLookup = {
-                    0: "air",
-                    1: "floor",
-                    2: "external",
-                    3: "regulator",
-                    4: "mv_air",
-                    5: "mv_external",
-                    6: "mv_regulator",
-                };
-                result.sensor = utils.getFromLookup(data.elkoSensor, sensorModeLookup);
+            if (data.ctmRegulatorMode !== undefined) {
+                result.regulator_mode = data.ctmRegulatorMode ? "regulator" : "thermostat";
             }
-            if (data[0x0405] !== undefined) {
-                // Regulator mode
-                result.regulator_mode = data[0x0405] ? "regulator" : "thermostat";
+            if (data.ctmPowerStatus !== undefined) {
+                result.power_status = data.ctmPowerStatus ? "ON" : "OFF";
             }
-            if (data.elkoRegulatorMode !== undefined) {
-                // Regulator mode
-                result.regulator_mode = data.elkoRegulatorMode ? "regulator" : "thermostat";
+            if (data.ctmMeanPower !== undefined) {
+                result.mean_power = data.ctmMeanPower;
             }
-            if (data[0x0406] !== undefined) {
-                // Power status
-                result.power_status = data[0x0406] ? "ON" : "OFF";
-            }
-            if (data.elkoPowerStatus !== undefined) {
-                // Power status
-                result.power_status = data.elkoPowerStatus ? "ON" : "OFF";
-            }
-            if (data[0x0408] !== undefined) {
-                // Mean power
-                result.mean_power = data[0x0408];
-            }
-            if (data.elkoMeanPower !== undefined) {
-                // Mean power
-                result.mean_power = data.elkoMeanPower;
-            }
-            if (data[0x0409] !== undefined) {
-                // Floor temp
-                result.floor_temp = utils.precisionRound(data[0x0409] as number, 2) / 100;
-            }
-            if (data.elkoExternalTemp !== undefined) {
+            if (data.ctmExternalTemp !== undefined) {
                 // External temp (floor)
-                result.floor_temp = utils.precisionRound(data.elkoExternalTemp, 2) / 100;
+                result.floor_temp = utils.precisionRound(data.ctmExternalTemp, 2) / 100;
             }
-            if (data[0x0411] !== undefined) {
-                // Night switching
-                result.night_switching = data[0x0411] ? "ON" : "OFF";
+            if (data.ctmNightSwitching !== undefined) {
+                result.night_switching = data.ctmNightSwitching ? "ON" : "OFF";
             }
-            if (data.elkoNightSwitching !== undefined) {
-                // Night switching
-                result.night_switching = data.elkoNightSwitching ? "ON" : "OFF";
+            if (data.ctmFrostGuard !== undefined) {
+                result.frost_guard = data.ctmFrostGuard ? "ON" : "OFF";
             }
-            if (data[0x0412] !== undefined) {
-                // Frost guard
-                result.frost_guard = data[0x0412] ? "ON" : "OFF";
+            if (data.ctmChildLock !== undefined) {
+                result.child_lock = data.ctmChildLock ? "LOCK" : "UNLOCK";
             }
-            if (data.elkoFrostGuard !== undefined) {
-                // Frost guard
-                result.frost_guard = data.elkoFrostGuard ? "ON" : "OFF";
+            if (data.ctmMaxFloorTemp !== undefined) {
+                result.max_floor_temp = data.ctmMaxFloorTemp;
             }
-            if (data[0x0413] !== undefined) {
-                // Child lock
-                result.child_lock = data[0x0413] ? "LOCK" : "UNLOCK";
+            if (data.ctmRelayState !== undefined) {
+                result.running_state = data.ctmRelayState ? "heat" : "idle";
             }
-            if (data.elkoChildLock !== undefined) {
-                // Child lock
-                result.child_lock = data.elkoChildLock ? "LOCK" : "UNLOCK";
-            }
-            if (data[0x0414] !== undefined) {
-                // Max floor temp
-                result.max_floor_temp = data[0x0414];
-            }
-            if (data.elkoMaxFloorTemp !== undefined) {
-                // Max floor temp
-                result.max_floor_temp = data.elkoMaxFloorTemp;
-            }
-            if (data[0x0415] !== undefined) {
-                // Running_state
-                result.running_state = data[0x0415] ? "heat" : "idle";
-            }
-            if (data.elkoRelayState !== undefined) {
-                // Running_state
-                result.running_state = data.elkoRelayState ? "heat" : "idle";
-            }
-            if (data[0x0420] !== undefined) {
+            if (data.ctmRegulatorSetpoint !== undefined) {
                 // Regulator setpoint
-                result.regulator_setpoint = data[0x0420];
+                result.regulator_setpoint = data.ctmRegulatorSetpoint;
             }
-            if (data[0x0421] !== undefined) {
+            if (data.ctmRegulationMode !== undefined) {
                 // Regulation mode
                 const regulationModeLookup = {0: "thermostat", 1: "regulator", 2: "zzilent"};
-                result.regulation_mode = utils.getFromLookup(data[0x0421], regulationModeLookup);
+                result.regulation_mode = utils.getFromLookup(data.ctmRegulationMode, regulationModeLookup);
             }
-            if (data[0x0422] !== undefined) {
+            if (data.ctmOperationMode !== undefined) {
                 // Operation mode
                 const presetLookup = {0: "off", 1: "away", 2: "sleep", 3: "home"};
                 const systemModeLookup = {0: "off", 1: "off", 2: "off", 3: "heat"};
-                result.preset = utils.getFromLookup(data[0x0422], presetLookup);
-                result.system_mode = utils.getFromLookup(data[0x0422], systemModeLookup);
+                result.preset = utils.getFromLookup(data.ctmOperationMode, presetLookup);
+                result.system_mode = utils.getFromLookup(data.ctmOperationMode, systemModeLookup);
             }
-            if (data[0x0423] !== undefined) {
-                // Maximum floor temp guard
-                result.max_floor_guard = data[0x0423] ? "ON" : "OFF";
+            if (data.ctmMaxFloorGuard !== undefined) {
+                result.max_floor_guard = data.ctmMaxFloorGuard ? "ON" : "OFF";
             }
-            if (data[0x0424] !== undefined) {
-                // Weekly timer enabled
-                result.weekly_timer = data[0x0424] ? "ON" : "OFF";
+            if (data.ctmWeeklyTimer !== undefined) {
+                result.weekly_timer = data.ctmWeeklyTimer ? "ON" : "OFF";
             }
             if (data[0x0425] !== undefined) {
                 // Frost guard setpoint
                 result.frost_guard_setpoint = data[0x0425];
             }
-            if (data[0x0426] !== undefined) {
-                // External temperature
-                result.external_temp = utils.precisionRound(data[0x0426] as number, 2) / 100;
+            if (data.ctmExternalTemp2 !== undefined) {
+                result.external_temp = utils.precisionRound(data.ctmExternalTemp2 as number, 2) / 100;
             }
             if (data[0x0428] !== undefined) {
                 // External sensor source
                 result.exteral_sensor_source = data[0x0428];
             }
-            if (data[0x0429] !== undefined) {
-                // Current air temperature
-                result.air_temp = utils.precisionRound(data[0x0429] as number, 2) / 100;
+            if (data.ctmAirTemp !== undefined) {
+                result.air_temp = utils.precisionRound(data.ctmAirTemp as number, 2) / 100;
             }
-            if (data[0x0424] !== undefined) {
-                // Floor Sensor Error
-                result.floor_sensor_error = data[0x042b] ? "error" : "ok";
+            if (data.ctmFloorSensorError !== undefined) {
+                result.floor_sensor_error = data.ctmFloorSensorError ? "error" : "ok";
             }
-            if (data[0x0424] !== undefined) {
-                // External Air Sensor Error
-                result.exteral_sensor_error = data[0x042c] ? "error" : "ok";
+            if (data.ctmAirSensorError !== undefined) {
+                result.exteral_sensor_error = data.ctmAirSensorError ? "error" : "ok";
             }
 
             return result;
         },
-    } satisfies Fz.Converter<"hvacThermostat", ElkoThermostatCluster, ["attributeReport", "readResponse"]>,
+    } satisfies Fz.Converter<"hvacThermostat", CtmThermostatCluster, ["attributeReport", "readResponse"]>,
     ctm_group_config: {
-        cluster: "65191", // 0xFEA7 ctmGroupConfig
+        cluster: "ctmGroupConfig", // 0xfea7
         type: ["attributeReport", "readResponse"],
         convert: (model, msg, publish, options, meta) => {
             const result: KeyValue = {};
             const data = msg.data;
-            if (data[0x0000] !== undefined) {
-                result.group_id = data[0x0000];
+            if (data.groupId !== undefined) {
+                result.group_id = data.groupId;
             }
 
             return result;
         },
-    } satisfies Fz.Converter<"65191", undefined, ["attributeReport", "readResponse"]>,
+    } satisfies Fz.Converter<"ctmGroupConfig", CtmGroupConfig, ["attributeReport", "readResponse"]>,
     ctm_sove_guard: {
-        cluster: "65481", // 0xFFC9 ctmSoveGuard
+        cluster: "ctmSoveGuard", // 0xFFC9
         type: ["attributeReport", "readResponse"],
         convert: (model, msg, publish, options, meta) => {
             const result: KeyValue = {};
@@ -400,7 +554,7 @@ const fzLocal = {
 
             return result;
         },
-    } satisfies Fz.Converter<"65481", undefined, ["attributeReport", "readResponse"]>,
+    } satisfies Fz.Converter<"ctmSoveGuard", undefined, ["attributeReport", "readResponse"]>,
     ctm_water_leak_alarm: {
         cluster: "ssIasZone",
         type: ["commandStatusChangeNotification", "attributeReport"],
@@ -443,41 +597,45 @@ const tzLocal = {
     ctm_device_mode: {
         key: ["device_mode"],
         convertGet: async (entity, key, meta) => {
-            await entity.read("genOnOff", [0x2200]);
+            await entity.read<"genOnOff", CtmGenOnOffCluster>("genOnOff", ["deviceMode"]);
         },
     } satisfies Tz.Converter,
     ctm_device_enabled: {
         key: ["device_enabled"],
         convertSet: async (entity, key, value, meta) => {
-            await entity.write("genOnOff", {8705: {value: utils.getFromLookup(value, {OFF: 0, ON: 1}), type: Zcl.DataType.BOOLEAN}});
+            await entity.write<"genOnOff", CtmGenOnOffCluster>("genOnOff", {
+                8705: {value: utils.getFromLookup(value, {OFF: 0, ON: 1}), type: Zcl.DataType.BOOLEAN},
+            });
         },
         convertGet: async (entity, key, meta) => {
-            await entity.read("genOnOff", [0x2201]);
+            await entity.read<"genOnOff", CtmGenOnOffCluster>("genOnOff", ["deviceEnabled"]);
         },
     } satisfies Tz.Converter,
     ctm_child_lock: {
         key: ["child_lock"],
         convertGet: async (entity, key, meta) => {
-            await entity.read("genOnOff", [0x2202]);
+            await entity.read<"genOnOff", CtmGenOnOffCluster>("genOnOff", ["childLock"]);
         },
     } satisfies Tz.Converter,
     ctm_current_flag: {
         key: ["current_flag"],
         convertGet: async (entity, key, meta) => {
-            await entity.read("genOnOff", [0x5000], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+            await entity.read<"genOnOff", CtmGenOnOffCluster>("genOnOff", ["currentFlag"], {
+                manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS,
+            });
         },
     } satisfies Tz.Converter,
     ctm_relay_state: {
         key: ["state"],
         convertSet: async (entity, key, value, meta) => {
-            await entity.write(
+            await entity.write<"genOnOff", CtmGenOnOffCluster>(
                 "genOnOff",
                 {20481: {value: utils.getFromLookup(value, {OFF: 0, ON: 1}), type: Zcl.DataType.BOOLEAN}},
                 {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS},
             );
         },
         convertGet: async (entity, key, meta) => {
-            await entity.read("genOnOff", [0x5001], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+            await entity.read<"genOnOff", CtmGenOnOffCluster>("genOnOff", ["relayState"], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
         },
     } satisfies Tz.Converter,
     ctm_thermostat: {
@@ -573,46 +731,46 @@ const tzLocal = {
         convertGet: async (entity, key, meta) => {
             switch (key) {
                 case "load":
-                    await entity.read("hvacThermostat", [0x0401]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmLoad"]);
                     break;
                 case "display_text":
-                    await entity.read("hvacThermostat", [0x0402]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmDisplayText"]);
                     break;
                 case "sensor":
-                    await entity.read("hvacThermostat", [0x0403]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmSensor"]);
                     break;
                 case "regulator_mode":
-                    await entity.read("hvacThermostat", [0x0405]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmRegulatorMode"]);
                     break;
                 case "power_status":
-                    await entity.read("hvacThermostat", [0x0406]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmPowerStatus"]);
                     break;
                 case "night_switching":
-                    await entity.read("hvacThermostat", [0x0411]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmNightSwitching"]);
                     break;
                 case "frost_guard":
-                    await entity.read("hvacThermostat", [0x0412]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmFrostGuard"]);
                     break;
                 case "max_floor_temp":
-                    await entity.read("hvacThermostat", [0x0414]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmMaxFloorTemp"]);
                     break;
                 case "regulator_setpoint":
-                    await entity.read("hvacThermostat", [0x0420]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmRegulatorSetpoint"]);
                     break;
                 case "regulation_mode":
-                    await entity.read("hvacThermostat", [0x0421]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmRegulationMode"]);
                     break;
                 case "system_mode":
-                    await entity.read("hvacThermostat", [0x0422]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmOperationMode"]);
                     break;
                 case "max_floor_guard":
-                    await entity.read("hvacThermostat", [0x0423]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmMaxFloorGuard"]);
                     break;
                 case "weekly_timer":
-                    await entity.read("hvacThermostat", [0x0424]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmWeeklyTimer"]);
                     break;
                 case "exteral_sensor_source":
-                    await entity.read("hvacThermostat", [0x0428]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", [0x0428]);
                     break;
 
                 default: // Unknown key
@@ -647,28 +805,28 @@ const tzLocal = {
         convertGet: async (entity, key, meta) => {
             switch (key) {
                 case "mean_power":
-                    await entity.read("hvacThermostat", [0x0408]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmMeanPower"]);
                     break;
                 case "floor_temp":
-                    await entity.read("hvacThermostat", [0x0409]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmExternalTemp"]);
                     break;
                 case "running_state":
-                    await entity.read("hvacThermostat", [0x0415]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmRelayState"]);
                     break;
                 case "frost_guard_setpoint":
-                    await entity.read("hvacThermostat", [0x0425]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmFrostGuardSetpoint"]);
                     break;
                 case "external_temp":
-                    await entity.read("hvacThermostat", [0x0426]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmExternalTemp2"]);
                     break;
                 case "air_temp":
-                    await entity.read("hvacThermostat", [0x0429]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmAirTemp"]);
                     break;
                 case "floor_sensor_error":
-                    await entity.read("hvacThermostat", [0x042b]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmFloorSensorError"]);
                     break;
                 case "exteral_sensor_error":
-                    await entity.read("hvacThermostat", [0x042c]);
+                    await entity.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmAirSensorError"]);
                     break;
 
                 default: // Unknown key
@@ -679,7 +837,9 @@ const tzLocal = {
     ctm_group_config: {
         key: ["group_id"],
         convertGet: async (entity, key, meta) => {
-            await entity.read(0xfea7, [0x0000], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+            await entity.read<"ctmGroupConfig", CtmGroupConfig>("ctmGroupConfig", ["groupId"], {
+                manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS,
+            });
         },
     } satisfies Tz.Converter,
     ctm_sove_guard: {
@@ -708,64 +868,64 @@ const tzLocal = {
         convertGet: async (entity, key, meta) => {
             switch (key) {
                 case "alarm_status":
-                    await entity.read(0xffc9, [0x0001], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x0001], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "battery_low":
-                    await entity.read(0xffc9, [0x0002], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x0002], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "stove_temperature":
-                    await entity.read(0xffc9, [0x0003], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x0003], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "ambient_temperature":
-                    await entity.read(0xffc9, [0x0004], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x0004], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "active":
-                    await entity.read(0xffc9, [0x0005], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x0005], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "runtime":
-                    await entity.read(0xffc9, [0x0006], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x0006], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "runtime_timeout":
-                    await entity.read(0xffc9, [0x0007], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x0007], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "reset_reason":
-                    await entity.read(0xffc9, [0x0008], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x0008], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "dip_switch":
-                    await entity.read(0xffc9, [0x0009], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x0009], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "sw_version":
-                    await entity.read(0xffc9, [0x000a], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x000a], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "hw_version":
-                    await entity.read(0xffc9, [0x000b], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x000b], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "bootloader_version":
-                    await entity.read(0xffc9, [0x000c], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x000c], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "model":
-                    await entity.read(0xffc9, [0x000d], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x000d], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "relay_address":
-                    await entity.read(0xffc9, [0x0010], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x0010], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "current_flag":
-                    await entity.read(0xffc9, [0x0100], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x0100], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "relay_current":
-                    await entity.read(0xffc9, [0x0101], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x0101], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "relay_status":
-                    await entity.read(0xffc9, [0x0102], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x0102], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "external_button":
-                    await entity.read(0xffc9, [0x0103], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x0103], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "relay_alarm":
-                    await entity.read(0xffc9, [0x0104], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x0104], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
                 case "relay_alarm_status":
-                    await entity.read(0xffc9, [0x0105], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+                    await entity.read("ctmSoveGuard", [0x0105], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
                     break;
 
                 default: // Unknown key
@@ -854,7 +1014,9 @@ export const definitions: DefinitionWithExtend[] = [
             await reporting.batteryVoltage(endpoint);
             await endpoint.read("msTemperatureMeasurement", ["measuredValue"]);
             await reporting.temperature(endpoint, {min: constants.repInterval.MINUTES_10, max: constants.repInterval.HOUR, change: 100});
-            await endpoint.read(0xfea7, [0x0000], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+            await endpoint.read<"ctmGroupConfig", CtmGroupConfig>("ctmGroupConfig", ["groupId"], {
+                manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS,
+            });
         },
         exposes: [
             e.battery(),
@@ -870,6 +1032,7 @@ export const definitions: DefinitionWithExtend[] = [
         model: "mTouch_One",
         vendor: "CTM Lyng",
         description: "mTouch One OP, touch thermostat",
+        extend: [ctmExtend.addCtmToHvacThermostatCluster()],
         fromZigbee: [fz.thermostat, fzLocal.ctm_thermostat],
         toZigbee: [
             tz.thermostat_occupied_heating_setpoint,
@@ -886,53 +1049,53 @@ export const definitions: DefinitionWithExtend[] = [
             await endpoint.read("hvacThermostat", ["localTemp", "occupiedHeatingSetpoint"]);
             await reporting.thermostatTemperature(endpoint);
             await reporting.thermostatOccupiedHeatingSetpoint(endpoint);
-            await endpoint.read("hvacThermostat", [0x0401]);
-            await endpoint.read("hvacThermostat", [0x0402]);
+            await endpoint.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmLoad"]);
+            await endpoint.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmDisplayText"]);
             // Regulator mode
-            await endpoint.read("hvacThermostat", [0x0405]);
-            await endpoint.configureReporting("hvacThermostat", [
+            await endpoint.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmRegulatorMode"]);
+            await endpoint.configureReporting<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", [
                 {
-                    attribute: {ID: 0x0405, type: Zcl.DataType.BOOLEAN},
+                    attribute: "ctmRegulatorMode",
                     minimumReportInterval: 1,
                     maximumReportInterval: constants.repInterval.MAX,
                     reportableChange: null,
                 },
             ]);
             // Power consumption
-            await endpoint.read("hvacThermostat", [0x0408]);
-            await endpoint.configureReporting("hvacThermostat", [
+            await endpoint.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmMeanPower"]);
+            await endpoint.configureReporting<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", [
                 {
-                    attribute: {ID: 0x0408, type: Zcl.DataType.UINT16},
+                    attribute: "ctmMeanPower",
                     minimumReportInterval: 0,
                     maximumReportInterval: constants.repInterval.HOUR,
                     reportableChange: 5,
                 },
             ]);
             // Floor temp sensor
-            await endpoint.read("hvacThermostat", [0x0409]);
-            await endpoint.configureReporting("hvacThermostat", [
+            await endpoint.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmExternalTemp"]);
+            await endpoint.configureReporting<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", [
                 {
-                    attribute: {ID: 0x0409, type: Zcl.DataType.INT16},
+                    attribute: "ctmExternalTemp",
                     minimumReportInterval: 0,
                     maximumReportInterval: constants.repInterval.HOUR,
                     reportableChange: 10,
                 },
             ]);
             // Frost guard
-            await endpoint.read("hvacThermostat", [0x0412]);
-            await endpoint.configureReporting("hvacThermostat", [
+            await endpoint.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmFrostGuard"]);
+            await endpoint.configureReporting<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", [
                 {
-                    attribute: {ID: 0x0412, type: Zcl.DataType.BOOLEAN},
+                    attribute: "ctmFrostGuard",
                     minimumReportInterval: 0,
                     maximumReportInterval: constants.repInterval.MAX,
                     reportableChange: null,
                 },
             ]);
             // Child lock active/inactive
-            await endpoint.read("hvacThermostat", [0x0413]);
-            await endpoint.configureReporting("hvacThermostat", [
+            await endpoint.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmChildLock"]);
+            await endpoint.configureReporting<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", [
                 {
-                    attribute: {ID: 0x0413, type: Zcl.DataType.BOOLEAN},
+                    attribute: "ctmChildLock",
                     minimumReportInterval: 0,
                     maximumReportInterval: constants.repInterval.MAX,
                     reportableChange: null,
@@ -949,20 +1112,20 @@ export const definitions: DefinitionWithExtend[] = [
                 },
             ]);
             // Operation mode
-            await endpoint.read("hvacThermostat", [0x0422]);
-            await endpoint.configureReporting("hvacThermostat", [
+            await endpoint.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmOperationMode"]);
+            await endpoint.configureReporting<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", [
                 {
-                    attribute: {ID: 0x0422, type: Zcl.DataType.UINT8},
+                    attribute: "ctmOperationMode",
                     minimumReportInterval: 0,
                     maximumReportInterval: constants.repInterval.HOUR,
                     reportableChange: 1,
                 },
             ]);
             // Air temp sensor
-            await endpoint.read("hvacThermostat", [0x0429]);
-            await endpoint.configureReporting("hvacThermostat", [
+            await endpoint.read<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", ["ctmAirTemp"]);
+            await endpoint.configureReporting<"hvacThermostat", CtmThermostatCluster>("hvacThermostat", [
                 {
-                    attribute: {ID: 0x0429, type: Zcl.DataType.INT16},
+                    attribute: "ctmAirTemp",
                     minimumReportInterval: 0,
                     maximumReportInterval: constants.repInterval.HOUR,
                     reportableChange: 10,
@@ -1099,14 +1262,14 @@ export const definitions: DefinitionWithExtend[] = [
         toZigbee: [],
         configure: async (device, coordinatorEndpoint) => {
             const endpoint = device.getEndpoint(1);
-            await reporting.bind(endpoint, coordinatorEndpoint, ["genPowerCfg", "msTemperatureMeasurement", 0xffc9]);
+            await reporting.bind(endpoint, coordinatorEndpoint, ["genPowerCfg", "msTemperatureMeasurement", "ctmSoveGuard"]);
             await reporting.batteryPercentageRemaining(endpoint);
             // await endpoint.read('msTemperatureMeasurement', ['measuredValue']);
             await reporting.temperature(endpoint, {min: constants.repInterval.MINUTES_10, max: constants.repInterval.HOUR, change: 100});
             // Alarm status
             // await endpoint.read(0xFFC9, [0x0001], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
             await endpoint.configureReporting(
-                0xffc9,
+                "ctmSoveGuard",
                 [
                     {
                         attribute: {ID: 0x0001, type: Zcl.DataType.UINT8},
@@ -1118,9 +1281,9 @@ export const definitions: DefinitionWithExtend[] = [
                 {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS},
             );
             // Change battery
-            // await endpoint.read(0xFFC9, [0x0002], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+            // await endpoint.read("ctmSoveGuard", [0x0002], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
             await endpoint.configureReporting(
-                0xffc9,
+                "ctmSoveGuard",
                 [
                     {
                         attribute: {ID: 0x0002, type: Zcl.DataType.UINT8},
@@ -1134,7 +1297,7 @@ export const definitions: DefinitionWithExtend[] = [
             // Active
             // await endpoint.read(0xFFC9, [0x0005], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
             await endpoint.configureReporting(
-                0xffc9,
+                "ctmSoveGuard",
                 [
                     {
                         attribute: {ID: 0x0005, type: Zcl.DataType.UINT8},
@@ -1178,34 +1341,36 @@ export const definitions: DefinitionWithExtend[] = [
             await endpoint.read("genOnOff", ["onOff"]);
             await reporting.onOff(endpoint);
             // Device mode
-            await endpoint.read("genOnOff", [0x2200]);
-            await endpoint.configureReporting("genOnOff", [
+            await endpoint.read<"genOnOff", CtmGenOnOffCluster>("genOnOff", ["deviceMode"]);
+            await endpoint.configureReporting<"genOnOff", CtmGenOnOffCluster>("genOnOff", [
                 {
-                    attribute: {ID: 0x2200, type: Zcl.DataType.UINT8},
+                    attribute: "deviceMode",
                     minimumReportInterval: 0,
                     maximumReportInterval: constants.repInterval.HOUR,
                     reportableChange: 0,
                 },
             ]);
-            await endpoint.read("genOnOff", [0x2201]);
-            await endpoint.configureReporting("genOnOff", [
+            await endpoint.read<"genOnOff", CtmGenOnOffCluster>("genOnOff", ["deviceEnabled"]);
+            await endpoint.configureReporting<"genOnOff", CtmGenOnOffCluster>("genOnOff", [
                 {
-                    attribute: {ID: 0x2201, type: Zcl.DataType.BOOLEAN},
+                    attribute: "deviceEnabled",
                     minimumReportInterval: 0,
                     maximumReportInterval: constants.repInterval.HOUR,
                     reportableChange: null,
                 },
             ]);
-            await endpoint.read("genOnOff", [0x2202]);
-            await endpoint.configureReporting("genOnOff", [
+            await endpoint.read<"genOnOff", CtmGenOnOffCluster>("genOnOff", ["childLock"]);
+            await endpoint.configureReporting<"genOnOff", CtmGenOnOffCluster>("genOnOff", [
                 {
-                    attribute: {ID: 0x2202, type: Zcl.DataType.BOOLEAN},
+                    attribute: "childLock",
                     minimumReportInterval: 0,
                     maximumReportInterval: constants.repInterval.HOUR,
                     reportableChange: null,
                 },
             ]);
-            await endpoint.read(0xfea7, [0x0000], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+            await endpoint.read<"ctmGroupConfig", CtmGroupConfig>("ctmGroupConfig", ["groupId"], {
+                manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS,
+            });
         },
         exposes: [
             e.switch(),
@@ -1277,7 +1442,9 @@ export const definitions: DefinitionWithExtend[] = [
             await endpoint.read("ssIasZone", ["iasCieAddr", "zoneState", "zoneId"]);
             await endpoint.read("msTemperatureMeasurement", ["measuredValue"]);
             await reporting.temperature(endpoint, {min: constants.repInterval.MINUTES_10, max: constants.repInterval.HOUR, change: 100});
-            await endpoint.read(0xfea7, [0x0000], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
+            await endpoint.read<"ctmGroupConfig", CtmGroupConfig>("ctmGroupConfig", ["groupId"], {
+                manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS,
+            });
         },
         exposes: [
             e.temperature(),
@@ -1326,12 +1493,14 @@ export const definitions: DefinitionWithExtend[] = [
             await endpoint.read("msOccupancySensing", ["occupancy"]);
             await reporting.occupancy(endpoint);
             // Relay State
-            await endpoint.read("genOnOff", [0x5001], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
-            await endpoint.configureReporting(
+            await endpoint.read<"genOnOff", CtmGenOnOffCluster>("genOnOff", ["relayState"], {
+                manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS,
+            });
+            await endpoint.configureReporting<"genOnOff", CtmGenOnOffCluster>(
                 "genOnOff",
                 [
                     {
-                        attribute: {ID: 0x5001, type: Zcl.DataType.BOOLEAN},
+                        attribute: "relayState",
                         minimumReportInterval: 1,
                         maximumReportInterval: constants.repInterval.HOUR,
                         reportableChange: 0,
@@ -1386,12 +1555,14 @@ export const definitions: DefinitionWithExtend[] = [
             await endpoint.read("msOccupancySensing", ["occupancy"]);
             await reporting.occupancy(endpoint);
             // Relay State
-            await endpoint.read("genOnOff", [0x5001], {manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS});
-            await endpoint.configureReporting(
+            await endpoint.read<"genOnOff", CtmGenOnOffCluster>("genOnOff", ["relayState"], {
+                manufacturerCode: Zcl.ManufacturerCode.DATEK_WIRELESS_AS,
+            });
+            await endpoint.configureReporting<"genOnOff", CtmGenOnOffCluster>(
                 "genOnOff",
                 [
                     {
-                        attribute: {ID: 0x5001, type: Zcl.DataType.BOOLEAN},
+                        attribute: "relayState",
                         minimumReportInterval: 1,
                         maximumReportInterval: constants.repInterval.HOUR,
                         reportableChange: 0,
