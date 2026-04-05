@@ -4,7 +4,7 @@ import {DataType} from "zigbee-herdsman/dist/zspec/zcl";
 import * as fz from "../converters/fromZigbee";
 import * as tz from "../converters/toZigbee";
 import * as libColor from "../lib/color";
-import {ColorMode, colorModeLookup} from "../lib/constants";
+import {ColorMode, colorModeLookup, type ThermostatSystemMode} from "../lib/constants";
 import * as exposes from "../lib/exposes";
 import * as legacy from "../lib/legacy";
 import {logger} from "../lib/logger";
@@ -3131,7 +3131,7 @@ export const definitions: DefinitionWithExtend[] = [
         },
     },
     {
-        fingerprint: tuya.fingerprint("TS0601", ["_TZE200_mby4kbtq", "_TZE204_mby4kbtq", "_TZE204_uo8qcagc"]),
+        fingerprint: tuya.fingerprint("TS0601", ["_TZE200_mby4kbtq", "_TZE204_mby4kbtq", "_TZE204_uo8qcagc", "_TZE284_uo8qcagc"]),
         model: "TS0601_gas_sensor_4", // _TZE200_mby4kbtq looks like TS0601_gas_sensor_2
         vendor: "Tuya",
         description: "Gas sensor",
@@ -6104,7 +6104,7 @@ export const definitions: DefinitionWithExtend[] = [
                 .withDescription("Send a wake-up command before turning the device on or/off, required for some firmware revisions."),
         ],
         exposes: (device, options) => {
-            const system_modes = ["off", "cool", "heat", "fan_only"];
+            const system_modes: ThermostatSystemMode[] = ["off", "cool", "heat", "fan_only"];
 
             // Device can operate either in cooling or heating/cooling configuration
             // For cooling only configurations remove 'heat' mode
@@ -7030,6 +7030,7 @@ export const definitions: DefinitionWithExtend[] = [
                 "_TZE204_guvc7pdy",
                 "_TZE200_zxxfv8wi",
                 "_TZE200_1fuxihti",
+                "_TZE284_1fuxihti",
                 "_TZE204_1fuxihti",
                 "_TZE204_57hjqelq",
                 "_TZE204_vvvtcehj",
@@ -9345,7 +9346,7 @@ export const definitions: DefinitionWithExtend[] = [
             tuya.whitelabel("BSEED", "_TZ3210_5ct6e7ye", "Wall-mounted electrical EU/FR/UK socket with power monitoring and USB", [
                 "_TZ3210_5ct6e7ye",
             ]),
-            tuya.whitelabel("Nous", "A1Z", "Smart plug (with power monitoring)", ["_TZ3000_2putqrmw", "_TZ3000_ksw8qtmt"]),
+            tuya.whitelabel("Nous", "A1Z", "Smart plug (with power monitoring)", ["_TZ3000_2putqrmw", "_TZ3210_2putqrmw", "_TZ3000_ksw8qtmt"]),
             tuya.whitelabel("Moes", "Moes_plug", "Smart plug (with power monitoring)", ["_TZ3000_yujkchbz"]),
             tuya.whitelabel("Moes", "ZK-EU", "Smart wallsocket (with power monitoring)", ["_TZ3000_ss98ec5d"]),
             tuya.whitelabel("Elivco", "LSPA9", "Smart plug (with power monitoring)", ["_TZ3000_okaz9tjs"]),
@@ -11759,6 +11760,7 @@ export const definitions: DefinitionWithExtend[] = [
         whiteLabel: [
             tuya.whitelabel("Niceboy", "ORBIS Vibration Sensor", "Vibration sensor", ["_TYZB01_821siati"]),
             tuya.whitelabel("iHseno", "_TZ3000_lzdjjfss", "Vibration sensor", ["_TZ3000_lzdjjfss"]),
+            tuya.whitelabel("ONENUO", "TS0210_5oy7cysk", "Vibration sensor", ["'_TZ32101000000_5oy7cysk'"]),
         ],
         fromZigbee: [fz.battery, fz.ias_vibration_alarm_1_with_timeout],
         toZigbee: [tz.TS0210_sensitivity],
@@ -17415,7 +17417,7 @@ export const definitions: DefinitionWithExtend[] = [
             e.binary("expose_device_state", ea.SET, true, false).withDescription("Expose device power state as a separate property when enabled."),
         ],
         exposes: (device, options) => {
-            const system_modes = ["off", "cool", "heat", "fan_only"];
+            const system_modes: ThermostatSystemMode[] = ["off", "cool", "heat", "fan_only"];
             // Device can operate either in 2-pipe or 4-pipe configuration
             // For 2-pipe configurations remove 'heat' mode
             switch (options?.control_sequence_of_operation) {
@@ -18337,7 +18339,7 @@ export const definitions: DefinitionWithExtend[] = [
                 [13, "test1", tuya.valueConverter.raw], // ?
                 [15, "leakage_current", tuya.valueConverter.raw],
                 [16, "state", tuya.valueConverter.onOff],
-                [32, "ac_frequency", tuya.valueConverter.divideBy100],
+                [32, "ac_frequency", tuya.valueConverter.raw],
                 [50, "power_factor", tuya.valueConverter.raw],
                 [
                     102,
