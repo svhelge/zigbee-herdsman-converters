@@ -84,14 +84,74 @@ const efektaCluster = {
             name: "msCO2",
             ID: Zcl.Clusters.msCO2.ID,
             attributes: {
+                readingInterval: {name: "readingInterval", ID: 0x0201, type: Zcl.DataType.UINT16, write: true},
+                forcedRecalibration: {name: "forcedRecalibration", ID: 0x0202, type: Zcl.DataType.BOOLEAN, write: true},
                 autoBrightness: {name: "autoBrightness", ID: 0x0203, type: Zcl.DataType.BOOLEAN, write: true},
+                longChartPeriod: {name: "longChartPeriod", ID: 0x0204, type: Zcl.DataType.BOOLEAN, write: true},
+                setAltitude: {name: "setAltitude", ID: 0x0205, type: Zcl.DataType.UINT16, write: true},
+                factoryResetCo2: {name: "factoryResetCo2", ID: 0x0206, type: Zcl.DataType.BOOLEAN, write: true},
+                manualForcedRecalibration: {name: "manualForcedRecalibration", ID: 0x0207, type: Zcl.DataType.UINT16, write: true},
+                lightIndicatorLevel: {name: "lightIndicatorLevel", ID: 0x0209, type: Zcl.DataType.UINT8, write: true},
+                lightIndicator: {name: "lightIndicator", ID: 0x0211, type: Zcl.DataType.BOOLEAN, write: true},
+                enableGas: {name: "enableGas", ID: 0x0220, type: Zcl.DataType.BOOLEAN, write: true},
+                highGas: {name: "highGas", ID: 0x0221, type: Zcl.DataType.UINT16, write: true},
+                lowGas: {name: "lowGas", ID: 0x0222, type: Zcl.DataType.UINT16, write: true},
+                invertLogicGas: {name: "invertLogicGas", ID: 0x0225, type: Zcl.DataType.BOOLEAN, write: true},
+                longChartPeriod2: {name: "longChartPeriod2", ID: 0x0244, type: Zcl.DataType.BOOLEAN, write: true},
+                rotate: {name: "rotate", ID: 0x0285, type: Zcl.DataType.UINT16, write: true},
+                internalOrExternal: {name: "internalOrExternal", ID: 0x0288, type: Zcl.DataType.BOOLEAN, write: true},
                 nightOnoffBacklight: {name: "nightOnoffBacklight", ID: 0x0401, type: Zcl.DataType.BOOLEAN, write: true},
+                automaticCalibration: {name: "automaticCalibration", ID: 0x0402, type: Zcl.DataType.BOOLEAN, write: true},
+                // longChartPeriod2: {name: "longChartPeriod2", ID: 0x0404, type: Zcl.DataType.BOOLEAN, write: true}, only one
                 nightOnBacklight: {name: "nightOnBacklight", ID: 0x0405, type: Zcl.DataType.UINT8, write: true},
                 nightOffBacklight: {name: "nightOffBacklight", ID: 0x0406, type: Zcl.DataType.UINT8, write: true},
-                rotate: {name: "rotate", ID: 0x0285, type: Zcl.DataType.UINT16, write: true},
-                longChartPeriod: {name: "longChartPeriod", ID: 0x0204, type: Zcl.DataType.BOOLEAN, write: true},
-                longChartPeriod2: {name: "longChartPeriod2", ID: 0x0244, type: Zcl.DataType.BOOLEAN, write: true},
-                setAltitude: {name: "setAltitude", ID: 0x0205, type: Zcl.DataType.UINT16, write: true},
+                co2AccurateMeasurement: {name: "co2AccurateMeasurement", ID: 0xf111, type: Zcl.DataType.BOOLEAN, write: true},
+            },
+            commands: {},
+            commandsResponse: {},
+        }),
+    efektaGenPowerCfgCluster: () =>
+        m.deviceAddCustomCluster("genPowerCfg", {
+            name: "genPowerCfg",
+            ID: Zcl.Clusters.genPowerCfg.ID,
+            attributes: {
+                reportDelay: {name: "reportDelay", ID: 0x0201, type: Zcl.DataType.UINT16, write: true}, // Reused for reading_interval / power_mode
+                comparisonPreviousData: {name: "comparisonPreviousData", ID: 0x0205, type: Zcl.DataType.BOOLEAN, write: true},
+                smartSleep: {name: "smartSleep", ID: 0x0216, type: Zcl.DataType.BOOLEAN, write: true},
+                txRadioPower: {name: "txRadioPower", ID: 0x0236, type: Zcl.DataType.INT8, write: true},
+                configReportEnable: {name: "configReportEnable", ID: 0x0275, type: Zcl.DataType.BOOLEAN, write: true},
+                sensorType: {name: "sensorType", ID: 0x0280, type: Zcl.DataType.UINT8, write: true},
+                invertColor: {name: "invertColor", ID: 0xf004, type: Zcl.DataType.BOOLEAN, write: true},
+            },
+            commands: {},
+            commandsResponse: {},
+        }),
+    efektaMsTemperatureMeasurementCluster: () =>
+        m.deviceAddCustomCluster("msTemperatureMeasurement", {
+            name: "msTemperatureMeasurement",
+            ID: Zcl.Clusters.msTemperatureMeasurement.ID,
+            attributes: {
+                temperatureOffset: {name: "temperatureOffset", ID: 0x0210, type: Zcl.DataType.INT16, write: true},
+                enablingTemperatureControl: {name: "enablingTemperatureControl", ID: 0x0220, type: Zcl.DataType.BOOLEAN, write: true},
+                highTemperature: {name: "highTemperature", ID: 0x0221, type: Zcl.DataType.INT16, write: true},
+                lowTemperature: {name: "lowTemperature", ID: 0x0222, type: Zcl.DataType.INT16, write: true},
+                temperatureActions: {name: "temperatureActions", ID: 0x0225, type: Zcl.DataType.BOOLEAN, write: true},
+                temperatureOffset2: {name: "temperatureOffset2", ID: 0x0410, type: Zcl.DataType.INT16, write: true}, // Fallback offset ID mapped in some devices
+                resolution: {name: "resolution", ID: 0x0520, type: Zcl.DataType.UINT8, write: true},
+            },
+            commands: {},
+            commandsResponse: {},
+        }),
+    efektaMsRelativeHumidityCluster: () =>
+        m.deviceAddCustomCluster("msRelativeHumidity", {
+            name: "msRelativeHumidity",
+            ID: Zcl.Clusters.msRelativeHumidity.ID,
+            attributes: {
+                humidityOffset: {name: "humidityOffset", ID: 0x0210, type: Zcl.DataType.INT16, write: true},
+                enablingHumidityControl: {name: "enablingHumidityControl", ID: 0x0220, type: Zcl.DataType.BOOLEAN, write: true},
+                highHumidity: {name: "highHumidity", ID: 0x0221, type: Zcl.DataType.INT16, write: true},
+                lowHumidity: {name: "lowHumidity", ID: 0x0222, type: Zcl.DataType.INT16, write: true},
+                humidityActions: {name: "humidityActions", ID: 0x0225, type: Zcl.DataType.BOOLEAN, write: true},
             },
             commands: {},
             commandsResponse: {},
@@ -116,27 +176,7 @@ const efektaCluster = {
             attributes: {
                 nightOnoffBacklight: {name: "nightOnoffBacklight", ID: 0x0401, type: Zcl.DataType.BOOLEAN, write: true},
                 nightOnBacklight: {name: "nightOnBacklight", ID: 0x0405, type: Zcl.DataType.UINT8, write: true},
-            },
-            commands: {},
-            commandsResponse: {},
-        }),
-    efektaMsTemperatureMeasurementCluster: () =>
-        m.deviceAddCustomCluster("msTemperatureMeasurement", {
-            name: "msTemperatureMeasurement",
-            ID: Zcl.Clusters.msTemperatureMeasurement.ID,
-            attributes: {
-                temperatureOffset: {name: "temperatureOffset", ID: 0x0210, type: Zcl.DataType.INT16, write: true},
-                temperatureOffset2: {name: "temperatureOffset", ID: 0x0410, type: Zcl.DataType.INT16, write: true},
-            },
-            commands: {},
-            commandsResponse: {},
-        }),
-    efektaMsRelativeHumidityCluster: () =>
-        m.deviceAddCustomCluster("msRelativeHumidity", {
-            name: "msRelativeHumidity",
-            ID: Zcl.Clusters.msRelativeHumidity.ID,
-            attributes: {
-                humidityOffset: {name: "humidityOffset", ID: 0x0210, type: Zcl.DataType.INT16, write: true},
+                nightOffBacklight: {name: "nightOffBacklight", ID: 0x0406, type: Zcl.DataType.UINT8, write: true},
             },
             commands: {},
             commandsResponse: {},
@@ -7417,13 +7457,13 @@ export const definitions: DefinitionWithExtend[] = [
                 description: "Night mode activation time",
                 access: "STATE_SET",
             }),
-            m.numeric({
+            m.numeric<"genLevelCtrl", EfektaGenLevelCtrlCluster>({
                 name: "night_off_backlight",
                 unit: "Hr",
                 valueMin: 0,
                 valueMax: 23,
                 cluster: "genLevelCtrl",
-                attribute: {ID: 0x0406, type: 0x20},
+                attribute: "nightOffBacklight",
                 description: "Night mode deactivation time",
                 access: "STATE_SET",
             }),
