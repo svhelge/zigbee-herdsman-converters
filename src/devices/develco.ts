@@ -800,8 +800,9 @@ export const definitions: DefinitionWithExtend[] = [
         model: "ZHEMI101",
         vendor: "Develco",
         description: "Energy meter",
-        fromZigbee: [develco.fz.metering, develco.fz.pulse_configuration, develco.fz.interface_mode],
-        toZigbee: [develco.tz.pulse_configuration, develco.tz.interface_mode, develco.tz.current_summation],
+        version: "0.0.1",
+        // fromZigbee: [develco.fz.metering, develco.fz.pulse_configuration, develco.fz.interface_mode],
+        // toZigbee: [develco.tz.pulse_configuration, develco.tz.interface_mode, develco.tz.current_summation],
         endpoint: (device) => {
             return {default: 2};
         },
@@ -809,32 +810,57 @@ export const definitions: DefinitionWithExtend[] = [
             develcoModernExtend.addCustomClusterManuSpecificDevelcoGenBasic(),
             develcoModernExtend.readGenBasicPrimaryVersions(),
             develcoModernExtend.addCustomDevelcoSeMeteringCluster(),
+            develcoModernExtend.zhemi101Metering(),
+            // m.enumLookup<"seMetering", DevelcoSeMetering>({
+            //     name: "interface_mode",
+            //     cluster: "seMetering",
+            //     attribute: "develcoInterfaceMode",
+            //     description: "Operating mode/probe.",
+            //     entityCategory: "config",
+            //     access: "ALL",
+            //     lookup: constants.develcoInterfaceMode,
+            //     zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.DEVELCO},
+            // }),
+            // m.electricityMeter({
+            //     cluster: "metering",
+            //     energy: {divisor: 1000, multiplier: 1},
+            //     producedEnergy: true,
+            //     voltage: false,
+            //     current: false,
+            // }),
+            m.battery({
+                percentage: false,
+                lowStatus: true,
+                percentageReporting: false,
+            }),
+            develcoModernExtend.currentSummation(),
+            develcoModernExtend.pulseConfiguration(),
         ],
-        configure: async (device, coordinatorEndpoint) => {
-            const endpoint = device.getEndpoint(2);
-            await reporting.bind(endpoint, coordinatorEndpoint, ["seMetering"]);
-            await reporting.instantaneousDemand(endpoint);
-            await reporting.readMeteringMultiplierDivisor(endpoint);
-        },
-        exposes: [
-            e.power(),
-            e.energy(),
-            e.battery_low(),
-            e
-                .numeric("pulse_configuration", ea.ALL)
-                .withValueMin(0)
-                .withValueMax(65535)
-                .withDescription("Pulses per kwh. Default 1000 imp/kWh. Range 0 to 65535"),
-            e
-                .enum("interface_mode", ea.ALL, ["electricity", "gas", "water", "kamstrup-kmp", "linky", "IEC62056-21", "DSMR-2.3", "DSMR-4.0"])
-                .withDescription("Operating mode/probe"),
-            e
-                .numeric("current_summation", ea.SET)
-                .withDescription("Current summation value sent to the display. e.g. 570 = 0,570 kWh")
-                .withValueMin(0)
-                .withValueMax(268435455),
-            e.binary("check_meter", ea.STATE, true, false).withDescription("Is true if communication problem with meter is experienced"),
-        ],
+        // configure: async (device, coordinatorEndpoint) => {
+        //     const endpoint = device.getEndpoint(2);
+        //     await reporting.bind(endpoint, coordinatorEndpoint, ["seMetering"]);
+        //     await reporting.instantaneousDemand(endpoint);
+        //     await reporting.readMeteringMultiplierDivisor(endpoint);
+        // },
+        // exposes: [
+        //     e.power(),
+        //     e.energy(),
+        //     e.battery_low(),
+        //     e
+        //         .numeric("pulse_configuration", ea.ALL)
+        //         .withValueMin(0)
+        //         .withValueMax(65535)
+        //         .withDescription("Pulses per kwh. Default 1000 imp/kWh. Range 0 to 65535"),
+        //     e
+        //         .enum("interface_mode", ea.ALL, ["electricity", "gas", "water", "kamstrup-kmp", "linky", "IEC62056-21", "DSMR-2.3", "DSMR-4.0"])
+        //         .withDescription("Operating mode/probe"),
+        //     e
+        //         .numeric("current_summation", ea.SET)
+        //         .withDescription("Current summation value sent to the display. e.g. 570 = 0,570 kWh")
+        //         .withValueMin(0)
+        //         .withValueMax(268435455),
+        //     e.binary("check_meter", ea.STATE, true, false).withDescription("Is true if communication problem with meter is experienced"),
+        // ],
     },
     {
         zigbeeModel: ["SMRZB-332"],

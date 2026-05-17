@@ -1,7 +1,10 @@
 import {Zcl} from "zigbee-herdsman";
+import * as fz from "../converters/fromZigbee";
+import * as tz from "../converters/toZigbee";
+import * as constants from "../lib/constants";
 import {presets as e, access as ea} from "./exposes";
-import {deviceAddCustomCluster, deviceTemperature, type NumericArgs, numeric, temperature} from "./modernExtend";
-import type {Configure, Expose, Fz, ModernExtend, Tz} from "./types";
+import {deviceAddCustomCluster, deviceTemperature, enumLookup, type NumericArgs, numeric, temperature} from "./modernExtend";
+import type {Configure, DefinitionExposesFunction, Expose, Fz, ModernExtend, Tz} from "./types";
 import {exposeEndpoints} from "./utils";
 
 const manufacturerOptions = {manufacturerCode: Zcl.ManufacturerCode.DEVELCO};
@@ -579,5 +582,122 @@ export const develcoModernExtend = {
             exposes,
             toZigbee,
         };
+    },
+    zhemi101Metering: (): ModernExtend => {
+        const getMode = (device: unknown): string => {
+            if (!device || typeof device !== "object" || !("endpoints" in device)) {
+                return "electricity";
+            }
+            // 2. Safely cast to a structural type to satisfy both TypeScript and Biome
+            const d = device as {
+                endpoints?: {
+                    supportsInputCluster: (cluster: string) => boolean;
+                    getClusterAttributeValue: (cluster: string, attr: string) => unknown;
+                }[];
+            };
+            // 3. Ensure endpoints actually exist and are an array
+            if (!d.endpoints || !Array.isArray(d.endpoints)) {
+                return "electricity";
+            }
+            // 4. Find the endpoint that supports the metering cluster
+            const ep = d.endpoints.find((e) => e.supportsInputCluster("seMetering"));
+            // 5. Read the cached attribute value for the interface mode
+            const modeVal = ep?.getClusterAttributeValue("seMetering", "develcoInterfaceMode");
+            // 6. Return the correct mode string based on the Develco specification
+            if (modeVal === 1) return "gas";
+            if (modeVal === 2) return "water";
+            // Default fallback
+            return "electricity";
+        };
+
+        // 1. Define the user-facing configuration dropdown
+        const extend = enumLookup<"seMetering", DevelcoSeMetering>({
+            name: "interface_mode",
+            cluster: "seMetering",
+            attribute: "develcoInterfaceMode",
+            description: "Operating mode/probe. Changing this reconfigures the device.",
+            entityCategory: "config",
+            access: "ALL",
+            lookup: constants.develcoInterfaceMode,
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.DEVELCO},
+        });
+        const originalExposes = extend.exposes || [];
+        extend.exposes = [
+            ((device, options) => {
+                const activeExposes: Expose[] = [];
+                // Put the interface_mode dropdown back into our active array
+                for (const exp of originalExposes) {
+                    if (typeof exp !== "function") {
+                        activeExposes.push(exp);
+                    }
+                }
+                const mode = getMode(device);
+                if (mode === "gas") {
+                    activeExposes.push(e.numeric("gas", ea.STATE_GET).withUnit("m³").withDescription("Total gas consumption"));
+                } else if (mode === "water") {
+                    activeExposes.push(e.numeric("water", ea.STATE_GET).withUnit("m³").withDescription("Total water consumption"));
+                } else {
+                    activeExposes.push(e.power().withAccess(ea.STATE_GET), e.energy().withAccess(ea.STATE_GET));
+                }
+                return activeExposes;
+            }) as DefinitionExposesFunction,
+        ];
+
+        const mode = getMode(undefined);
+
+        // Define your layout arrays
+        let fromZigbeeConverters: unknown[] = [];
+        let toZigbeeConverters: unknown[] = [];
+
+        if (mode === "gas") {
+            fromZigbeeConverters = [fz.gas_metering];
+            toZigbeeConverters = [
+                {
+                    key: ["gas"],
+                    convertGet: async (entity, key, meta) => {
+                        const ep = meta.device.getEndpoint(1); // or your determineEndpoint helper
+                        await ep.read("seMetering", ["currentSummDelivered"]);
+                    },
+                    convertSet: async (entity, key, value, meta) => {
+                        // Your custom write logic
+                        await entity.write("seMetering", {currentSummDelivered: Math.round(Number(value) * 100)});
+                        return {state: {gas: value}};
+                    },
+                } satisfies Tz.Converter,
+                tz.metering_power,
+                tz.metering_status,
+            ];
+        } else if (mode === "water") {
+            fromZigbeeConverters = [
+                {
+                    cluster: "seMetering",
+                    type: ["attributeReport", "readResponse"],
+                    convert: (model, msg, publish, options, meta) => {
+                        // Your custom water inbound parsing
+                        return {};
+                    },
+                } satisfies Fz.Converter<"seMetering", undefined, ["attributeReport", "readResponse"]>,
+            ];
+            toZigbeeConverters = [
+                // {
+                //     key: ["water"],
+                //     convertSet: async (entity, key, value, meta) => {
+                //         return {};
+                //     },
+                // } satisfies Tz.Converter,
+                tz.metering_power,
+                tz.currentsummdelivered,
+                tz.metering_status,
+            ];
+        } else {
+            // Electricity
+            fromZigbeeConverters = [fz.metering];
+            toZigbeeConverters = [tz.metering_status];
+        }
+        // 4. Safely push your selected converters into the extend block arrays
+        extend.fromZigbee.push(...(fromZigbeeConverters as typeof extend.fromZigbee));
+        extend.toZigbee.push(...(toZigbeeConverters as typeof extend.toZigbee));
+
+        return extend;
     },
 };
