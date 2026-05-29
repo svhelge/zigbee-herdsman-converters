@@ -77,7 +77,6 @@ type AqaraH2EuShutterSwitchEndpointName = keyof typeof aqaraH2EuShutterSwitchEnd
 const aqaraH2EuShutterSwitchEndpointNames: AqaraH2EuShutterSwitchEndpointName[] = ["top_wireless_button", "bottom_wireless_button"];
 const aqaraH2EuShutterSwitchActionLookup = {hold: 0, single: 1, double: 2, release: 255};
 const aqaraH2EuShutterSwitchMultiEndpointSkip = ["energy", "position", "state", "tilt"];
-const aqaraH2EuShutterSwitchMultiClickAttribute = 0x0286;
 
 async function configureAqaraH2EuShutterSwitch(device: Zh.Device, coordinatorEndpoint: Zh.Endpoint) {
     for (const endpointName of aqaraH2EuShutterSwitchEndpointNames) {
@@ -85,7 +84,7 @@ async function configureAqaraH2EuShutterSwitch(device: Zh.Device, coordinatorEnd
         await reporting.bind(endpoint, coordinatorEndpoint, ["manuSpecificLumi", "genMultistateInput"]);
         await endpoint.configureReporting("genMultistateInput", reporting.payload("presentValue", 0, 3600, 1));
         // Initialize Aqara's per-button multi-click setting on startup.
-        await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [aqaraH2EuShutterSwitchMultiClickAttribute], {
+        await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["multiClick"], {
             manufacturerCode,
         });
     }
@@ -420,15 +419,19 @@ export const definitions: DefinitionWithExtend[] = [
         description: "LED Strip T1",
         configure: async (device, coordinatorEndpoint) => {
             const endpoint = device.getEndpoint(1);
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0515], {manufacturerCode: manufacturerCode});
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0516], {manufacturerCode: manufacturerCode});
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0517], {manufacturerCode: manufacturerCode});
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x051b], {manufacturerCode: manufacturerCode});
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["dimmingRangeMinimum"], {
+                manufacturerCode: manufacturerCode,
+            });
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["dimmingRangeMaximum"], {
+                manufacturerCode: manufacturerCode,
+            });
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["powerOnBehavior"], {manufacturerCode: manufacturerCode});
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["length"], {manufacturerCode: manufacturerCode});
             await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x051c], {manufacturerCode: manufacturerCode});
             await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x051d], {manufacturerCode: manufacturerCode});
             await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x051e], {manufacturerCode: manufacturerCode});
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x051f], {manufacturerCode: manufacturerCode});
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0520], {manufacturerCode: manufacturerCode});
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["effect"], {manufacturerCode: manufacturerCode});
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["effectSpeed"], {manufacturerCode: manufacturerCode});
             await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0523], {manufacturerCode: manufacturerCode});
             await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0527], {manufacturerCode: manufacturerCode});
             await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0530], {manufacturerCode: manufacturerCode});
@@ -459,7 +462,7 @@ export const definitions: DefinitionWithExtend[] = [
                 scale: 5,
                 unit: "m",
                 cluster: "manuSpecificLumi",
-                attribute: {ID: 0x051b, type: 0x20},
+                attribute: "length",
                 description: "LED strip length (5 x 20cm segments per meter)",
                 entityCategory: "config",
                 zigbeeCommandOptions: {manufacturerCode},
@@ -3266,23 +3269,23 @@ export const definitions: DefinitionWithExtend[] = [
                 powerOutageMemory: "enum",
                 levelConfig: {features: ["on_off_transition_time", "on_transition_time", "off_transition_time", "execute_if_off", "on_level"]},
             }),
-            m.numeric({
+            m.numeric<"manuSpecificLumi", ManuSpecificLumi>({
                 name: "min_brightness",
                 valueMin: 0,
                 valueMax: 99,
                 unit: "%",
                 cluster: "manuSpecificLumi",
-                attribute: {ID: 0x0515, type: 0x20},
+                attribute: "dimmingRangeMinimum",
                 description: "Minimum brightness level",
                 zigbeeCommandOptions: {manufacturerCode},
             }),
-            m.numeric({
+            m.numeric<"manuSpecificLumi", ManuSpecificLumi>({
                 name: "max_brightness",
                 valueMin: 1,
                 valueMax: 100,
                 unit: "%",
                 cluster: "manuSpecificLumi",
-                attribute: {ID: 0x0516, type: 0x20},
+                attribute: "dimmingRangeMaximum",
                 description: "Maximum brightness level",
                 zigbeeCommandOptions: {manufacturerCode},
             }),
@@ -4074,7 +4077,7 @@ export const definitions: DefinitionWithExtend[] = [
                 {mode: 1},
                 {manufacturerCode: manufacturerCode, disableResponse: true},
             );
-            await endpoint1.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0125], {manufacturerCode: manufacturerCode});
+            await endpoint1.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["clickMode"], {manufacturerCode: manufacturerCode});
         },
     },
     {
@@ -4878,10 +4881,14 @@ export const definitions: DefinitionWithExtend[] = [
 
         configure: async (device, coordinatorEndpoint) => {
             const endpoint = device.getEndpoint(1);
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0515], {manufacturerCode: manufacturerCode});
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0516], {manufacturerCode: manufacturerCode});
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x051f], {manufacturerCode: manufacturerCode});
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0520], {manufacturerCode: manufacturerCode});
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["dimmingRangeMinimum"], {
+                manufacturerCode: manufacturerCode,
+            });
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["dimmingRangeMaximum"], {
+                manufacturerCode: manufacturerCode,
+            });
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["effect"], {manufacturerCode: manufacturerCode});
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["effectSpeed"], {manufacturerCode: manufacturerCode});
             await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0522], {manufacturerCode: manufacturerCode});
             await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0523], {manufacturerCode: manufacturerCode});
             await endpoint.read("genLevelCtrl", [0x0012], {});
@@ -4983,13 +4990,21 @@ export const definitions: DefinitionWithExtend[] = [
         ],
         configure: async (device, coordinatorEndpoint) => {
             const endpoint = device.getEndpoint(1);
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0515], {manufacturerCode: manufacturerCode});
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0516], {manufacturerCode: manufacturerCode});
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x051f], {manufacturerCode: manufacturerCode});
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0520], {manufacturerCode: manufacturerCode});
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["dimmingRangeMinimum"], {
+                manufacturerCode: manufacturerCode,
+            });
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["dimmingRangeMaximum"], {
+                manufacturerCode: manufacturerCode,
+            });
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["effect"], {manufacturerCode: manufacturerCode});
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["effectSpeed"], {manufacturerCode: manufacturerCode});
             await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0523], {manufacturerCode: manufacturerCode});
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0528], {manufacturerCode: manufacturerCode});
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x052c], {manufacturerCode: manufacturerCode});
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["transitionCurveCurvature"], {
+                manufacturerCode: manufacturerCode,
+            });
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["transitionInitialBrightness"], {
+                manufacturerCode: manufacturerCode,
+            });
             await endpoint.read("genLevelCtrl", [0x0012], {});
             await endpoint.read("genLevelCtrl", [0x0013], {});
         },
@@ -5032,10 +5047,18 @@ export const definitions: DefinitionWithExtend[] = [
         ],
         configure: async (device, coordinatorEndpoint) => {
             const endpoint = device.getEndpoint(1);
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0515], {manufacturerCode: manufacturerCode});
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0516], {manufacturerCode: manufacturerCode});
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0528], {manufacturerCode: manufacturerCode});
-            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x052c], {manufacturerCode: manufacturerCode});
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["dimmingRangeMinimum"], {
+                manufacturerCode: manufacturerCode,
+            });
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["dimmingRangeMaximum"], {
+                manufacturerCode: manufacturerCode,
+            });
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["transitionCurveCurvature"], {
+                manufacturerCode: manufacturerCode,
+            });
+            await endpoint.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["transitionInitialBrightness"], {
+                manufacturerCode: manufacturerCode,
+            });
             await endpoint.read("genLevelCtrl", [0x0012], {});
             await endpoint.read("genLevelCtrl", [0x0013], {});
         },
@@ -5150,25 +5173,16 @@ export const definitions: DefinitionWithExtend[] = [
                 description: "Dimming phase",
                 zigbeeCommandOptions: {manufacturerCode},
             }),
-            m.numeric<"manuSpecificLumi", ManuSpecificLumi>({
+            lumi.lumiModernExtend.lumiDimmingRangeMin({
                 name: "min_brightness",
                 valueMin: 0,
-                valueMax: 99,
-                unit: "%",
-                cluster: "manuSpecificLumi",
-                attribute: {ID: 0x0515, type: 0x20},
                 description: "Minimum brightness level",
-                zigbeeCommandOptions: {manufacturerCode},
             }),
-            m.numeric<"manuSpecificLumi", ManuSpecificLumi>({
+            lumi.lumiModernExtend.lumiDimmingRangeMax({
                 name: "max_brightness",
                 valueMin: 1,
                 valueMax: 100,
-                unit: "%",
-                cluster: "manuSpecificLumi",
-                attribute: {ID: 0x0516, type: 0x20},
                 description: "Maximum brightness level",
-                zigbeeCommandOptions: {manufacturerCode},
             }),
         ],
     },
@@ -5248,7 +5262,7 @@ export const definitions: DefinitionWithExtend[] = [
                 unit: "%",
                 access: "STATE_SET",
                 cluster: "manuSpecificLumi",
-                attribute: {ID: 0x0515, type: 0x20},
+                attribute: "dimmingRangeMinimum",
                 description: "Minimum brightness level",
                 entityCategory: "config",
                 zigbeeCommandOptions: {manufacturerCode},
@@ -5260,7 +5274,7 @@ export const definitions: DefinitionWithExtend[] = [
                 unit: "%",
                 access: "STATE_SET",
                 cluster: "manuSpecificLumi",
-                attribute: {ID: 0x0516, type: 0x20},
+                attribute: "dimmingRangeMaximum",
                 description: "Maximum brightness level",
                 entityCategory: "config",
                 zigbeeCommandOptions: {manufacturerCode},

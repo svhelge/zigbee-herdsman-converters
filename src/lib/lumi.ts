@@ -62,22 +62,50 @@ export interface TrvScheduleConfig {
 
 export interface ManuSpecificLumi {
     attributes: {
-        /** ID=0x0009 | type=UINT8 | write=true | max=255 */
+        modeSwitch: number;
         mode: number;
-        /** ID=0x0112 | type=UINT32 | write=true | max=4294967295 */
+        switchType: number;
+        flipIndicatorLight: number;
+        detectionDistance: number;
+        sensitivityAdjustment: number;
+        reportInterval: number;
         illuminance: number;
-        /** ID=0x0114 | type=UINT8 | write=true | max=255 */
         displayUnit: number;
-        /** ID=0x0118 | type=UINT8 */
         movement: number;
-        /** ID=0x0129 | type=UINT8 | write=true | max=255 */
+        clickMode: number;
         airQuality: number;
-        /** ID=0x0400 | type=BOOLEAN | write=true */
-        curtainReverse: number;
-        /** ID=0x0401 | type=BOOLEAN | write=true */
-        curtainHandOpen: number;
-        /** ID=0x0402 | type=BOOLEAN | write=true */
-        curtainCalibrated: number;
+        presence: number;
+        pirDetection: number;
+        detectionRange: number;
+        aiSensitivityAdaptive: number;
+        aiInterferenceSourceSelfIdentification: number;
+        targetDistance: number;
+        fp1eMovement: number;
+        powerOutageMemory: boolean;
+        overloadProtection: number;
+        lockRelay: number;
+        multiClick: number;
+        curtainReverse: boolean;
+        curtainHandOpen: boolean;
+        curtainCalibrated: boolean;
+        traverseTime: number;
+        identifyBeep: number;
+        motorSpeed: number;
+        curtainPosition: number;
+        status: number;
+        lastManualOperation: number;
+        calibrationStatus: number;
+        manualStop: boolean;
+        curtainSpeed: number;
+        adaptivePullingSpeed: number;
+        dimmingRangeMinimum: number;
+        dimmingRangeMaximum: number;
+        powerOnBehavior: number;
+        length: number;
+        effect: number;
+        effectSpeed: number;
+        transitionCurveCurvature: number;
+        transitionInitialBrightness: number;
     };
     commands: never;
     commandResponses: never;
@@ -1772,14 +1800,60 @@ export const lumiModernExtend = {
             ID: 0xfcc0,
             manufacturerCode: Zcl.ManufacturerCode.LUMI_UNITED_TECHOLOGY_LTD_SHENZHEN,
             attributes: {
+                modeSwitch: {name: "modeSwitch", ID: 0x0004, type: Zcl.DataType.UINT16, write: true}, // uint16 (Quick/Anti-flicker)
                 mode: {name: "mode", ID: 0x0009, type: Zcl.DataType.UINT8, write: true, max: 0xff},
+                switchType: {name: "switchType", ID: 0x000a, type: Zcl.DataType.UINT8},
+                flipIndicatorLight: {name: "flipIndicatorLight", ID: 0x00f0, type: Zcl.DataType.UINT8},
+                detectionDistance: {name: "detectionDistance", ID: 0x010c, type: Zcl.DataType.UINT8},
+                sensitivityAdjustment: {name: "sensitivityAdjustment", ID: 0x010e, type: Zcl.DataType.UINT8},
+                reportInterval: {name: "reportInterval", ID: 0x0110, type: Zcl.DataType.UINT8},
                 illuminance: {name: "illuminance", ID: 0x0112, type: Zcl.DataType.UINT32, write: true, max: 0xffffffff},
                 displayUnit: {name: "displayUnit", ID: 0x0114, type: Zcl.DataType.UINT8, write: true, max: 0xff},
                 movement: {name: "movement", ID: 0x0118, type: Zcl.DataType.UINT8},
+                clickMode: {name: "clickMode", ID: 0x0125, type: Zcl.DataType.UINT8, write: true},
                 airQuality: {name: "airQuality", ID: 0x0129, type: Zcl.DataType.UINT8, write: true, max: 0xff},
+                presence: {name: "presence", ID: 0x0142, type: Zcl.DataType.UINT8},
+                pirDetection: {name: "pirDetection", ID: 0x014d, type: Zcl.DataType.UINT8},
+                detectionRange: {name: "detectionRange", ID: 0x015b, type: Zcl.DataType.UINT32},
+                aiSensitivityAdaptive: {name: "aiSensitivityAdaptive", ID: 0x015d, type: Zcl.DataType.UINT8},
+                aiInterferenceSourceSelfIdentification: {name: "aiInterferenceSourceSelfIdentification", ID: 0x015e, type: Zcl.DataType.UINT8},
+                targetDistance: {name: "targetDistance", ID: 0x015f, type: Zcl.DataType.UINT32},
+                fp1eMovement: {name: "fp1eMovement", ID: 0x0160, type: Zcl.DataType.UINT8},
+                powerOutageMemory: {name: "powerOutageMemory", ID: 0x0201, type: Zcl.DataType.BOOLEAN},
+
+                // ⚠️ removed due to same ID conflict (0x0200)
+                // operationMode: {name: "operationMode", ID: 0x0200, type: 0x20}, // uint8 (Decoupled/Relay)
+                // buttonLock: {name: "buttonLock", ID: 0x0200, type: 0x20}, // uint8 (Shared ID with operation_mode in some devices)
+
+                // ⚠️ removed due to same ID conflict (0x0203)
+                // ledIndicator: {name: "ledIndicator", ID: 0x0203, type: 0x10}, // boolean
+                // ledDisabledNight: {name: "ledDisabledNight", ID: 0x0203, type: 0x10}, // boolean (Same ID as indicator)
+
+                overloadProtection: {name: "overloadProtection", ID: 0x020b, type: Zcl.DataType.SINGLE_PREC}, // single precision float
+                lockRelay: {name: "lockRelay", ID: 0x0285, type: Zcl.DataType.UINT8, write: true},
+                multiClick: {name: "multiClick", ID: 0x0286, type: Zcl.DataType.UINT8, write: true},
                 curtainReverse: {name: "curtainReverse", ID: 0x0400, type: Zcl.DataType.BOOLEAN, write: true},
                 curtainHandOpen: {name: "curtainHandOpen", ID: 0x0401, type: Zcl.DataType.BOOLEAN, write: true},
                 curtainCalibrated: {name: "curtainCalibrated", ID: 0x0402, type: Zcl.DataType.BOOLEAN, write: true},
+                traverseTime: {name: "traverseTime", ID: 0x0403, type: Zcl.DataType.UINT8},
+                identifyBeep: {name: "identifyBeep", ID: 0x0404, type: Zcl.DataType.UINT8},
+                motorSpeed: {name: "motorSpeed", ID: 0x0408, type: Zcl.DataType.UINT8, write: true},
+                curtainPosition: {name: "curtainPosition", ID: 0x041f, type: Zcl.DataType.UINT8},
+                status: {name: "status", ID: 0x0421, type: Zcl.DataType.UINT8, write: true},
+                lastManualOperation: {name: "lastManualOperation", ID: 0x0425, type: Zcl.DataType.UINT8},
+                calibrationStatus: {name: "calibrationStatus", ID: 0x0426, type: Zcl.DataType.UINT8},
+                manualStop: {name: "manualStop", ID: 0x043a, type: Zcl.DataType.BOOLEAN, write: true},
+                curtainSpeed: {name: "curtainSpeed", ID: 0x043b, type: Zcl.DataType.UINT8, write: true},
+                adaptivePullingSpeed: {name: "adaptivePullingSpeed", ID: 0x0442, type: Zcl.DataType.UINT8, write: true},
+                dimmingRangeMinimum: {name: "dimmingRangeMinimum", ID: 0x0515, type: Zcl.DataType.UINT8, write: true},
+                dimmingRangeMaximum: {name: "dimmingRangeMaximum", ID: 0x0516, type: Zcl.DataType.UINT8, write: true},
+                powerOnBehavior: {name: "powerOnBehavior", ID: 0x0517, type: Zcl.DataType.UINT8, write: true},
+                length: {name: "length", ID: 0x051b, type: Zcl.DataType.UINT8, write: true},
+                effect: {name: "effect", ID: 0x051f, type: Zcl.DataType.UINT32, write: true},
+                effectSpeed: {name: "effectSpeed", ID: 0x0520, type: Zcl.DataType.UINT8, write: true},
+
+                transitionCurveCurvature: {name: "transitionCurveCurvature", ID: 0x0528, type: Zcl.DataType.SINGLE_PREC, write: true},
+                transitionInitialBrightness: {name: "transitionInitialBrightness", ID: 0x052c, type: Zcl.DataType.UINT8, write: true},
             },
             commands: {},
             commandsResponse: {},
@@ -1826,7 +1900,7 @@ export const lumiModernExtend = {
         modernExtend.numeric<"manuSpecificLumi", ManuSpecificLumi>({
             name: "dimming_range_minimum",
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x0515, type: 0x20},
+            attribute: "dimmingRangeMinimum",
             description: "Minimum allowed dimming value",
             zigbeeCommandOptions: {manufacturerCode},
             unit: "%",
@@ -1840,7 +1914,7 @@ export const lumiModernExtend = {
         modernExtend.numeric<"manuSpecificLumi", ManuSpecificLumi>({
             name: "dimming_range_maximum",
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x0516, type: 0x20},
+            attribute: "dimmingRangeMaximum",
             description: "Maximum allowed dimming value",
             zigbeeCommandOptions: {manufacturerCode},
             unit: "%",
@@ -1854,7 +1928,7 @@ export const lumiModernExtend = {
         modernExtend.numeric({
             name: "off_on_duration",
             cluster: "genLevelCtrl",
-            attribute: {ID: 0x0012, type: 0x21},
+            attribute: "onTransitionTime",
             description: "Duration for light to gradually brighten when turning on",
             unit: "s",
             valueMin: 0,
@@ -1868,7 +1942,7 @@ export const lumiModernExtend = {
         modernExtend.numeric({
             name: "on_off_duration",
             cluster: "genLevelCtrl",
-            attribute: {ID: 0x0013, type: 0x21},
+            attribute: "offTransitionTime",
             description: "Duration for light to gradually dim when turning off",
             unit: "s",
             valueMin: 0,
@@ -1882,7 +1956,7 @@ export const lumiModernExtend = {
         modernExtend.numeric<"manuSpecificLumi", ManuSpecificLumi>({
             name: "transition_curve_curvature",
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x0528, type: 0x39},
+            attribute: "transitionCurveCurvature",
             description: "Transition curve shape: 0.2-1 (fast to slow), 1 (uniform), 1-6 (slow to fast)",
             zigbeeCommandOptions: {manufacturerCode},
             valueMin: 0.2,
@@ -1895,7 +1969,7 @@ export const lumiModernExtend = {
         modernExtend.numeric<"manuSpecificLumi", ManuSpecificLumi>({
             name: "transition_initial_brightness",
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x052c, type: 0x20},
+            attribute: "transitionInitialBrightness",
             description: "Starting brightness level when light turns on before transition",
             zigbeeCommandOptions: {manufacturerCode},
             unit: "%",
@@ -1910,7 +1984,7 @@ export const lumiModernExtend = {
             name: "effect",
             lookup: lookup,
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x051f, type: 0x23},
+            attribute: "effect",
             description: "RGB dynamic effect type",
             zigbeeCommandOptions: {manufacturerCode, disableDefaultResponse: true},
             ...args,
@@ -1920,7 +1994,7 @@ export const lumiModernExtend = {
         return modernExtend.numeric<"manuSpecificLumi", ManuSpecificLumi>({
             name: "effect_speed",
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x0520, type: 0x20},
+            attribute: "effectSpeed",
             description: "RGB dynamic effect speed (1-100%)",
             zigbeeCommandOptions: {manufacturerCode, disableDefaultResponse: true},
             unit: "%",
@@ -2216,7 +2290,7 @@ export const lumiModernExtend = {
             name: "switch_type",
             lookup: {toggle: 1, momentary: 2, none: 3},
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x000a, type: 0x20},
+            attribute: "switchType",
             description: "External switch type",
             entityCategory: "config",
             zigbeeCommandOptions: {manufacturerCode},
@@ -2227,7 +2301,7 @@ export const lumiModernExtend = {
             name: "motor_speed",
             lookup: {low: 0, medium: 1, high: 2},
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x0408, type: 0x20},
+            attribute: "motorSpeed",
             description: "Controls the motor speed",
             entityCategory: "config",
             zigbeeCommandOptions: {manufacturerCode},
@@ -2237,7 +2311,7 @@ export const lumiModernExtend = {
         modernExtend.numeric<"manuSpecificLumi", ManuSpecificLumi>({
             name: "curtain_speed",
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x043b, type: 0x20},
+            attribute: "curtainSpeed",
             description: "Speed of curtain movement",
             zigbeeCommandOptions: {manufacturerCode},
             access: "ALL",
@@ -2266,7 +2340,7 @@ export const lumiModernExtend = {
             valueOn: ["ON", 1],
             valueOff: ["OFF", 0],
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x0442, type: 0x20},
+            attribute: "adaptivePullingSpeed",
             description: "The faster/slower the curtain is pulled manually, the faster/slower the curtain will move",
             zigbeeCommandOptions: {manufacturerCode},
             access: "ALL",
@@ -2279,7 +2353,7 @@ export const lumiModernExtend = {
             valueOn: ["ON", 1],
             valueOff: ["OFF", 0],
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x043a, type: 0x10},
+            attribute: "manualStop",
             description: "Manually pulling the curtain during operation stops the motor",
             zigbeeCommandOptions: {manufacturerCode},
             access: "ALL",
@@ -2304,7 +2378,7 @@ export const lumiModernExtend = {
             name: "status",
             lookup: {closing: 0, opening: 1, stopped: 2, blocked: 3},
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x0421, type: 0x20},
+            attribute: "status",
             description: "Current status of the curtain (Opening, Closing, Stopped, Blocked)",
             zigbeeCommandOptions: {manufacturerCode},
             access: "STATE",
@@ -2316,7 +2390,7 @@ export const lumiModernExtend = {
             name: "last_manual_operation",
             lookup: {open: 1, close: 2, stop: 3},
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x0425, type: 0x20},
+            attribute: "lastManualOperation",
             description: "Last triggered manual operation",
             zigbeeCommandOptions: {manufacturerCode},
             access: "STATE",
@@ -2327,7 +2401,7 @@ export const lumiModernExtend = {
         modernExtend.numeric<"manuSpecificLumi", ManuSpecificLumi>({
             name: "curtain_position",
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x041f, type: 0x20},
+            attribute: "curtainPosition",
             description: "Current position of the curtain",
             zigbeeCommandOptions: {manufacturerCode},
             access: "STATE",
@@ -2341,7 +2415,7 @@ export const lumiModernExtend = {
         modernExtend.numeric<"manuSpecificLumi", ManuSpecificLumi>({
             name: "traverse_time",
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x0403, type: 0x20},
+            attribute: "traverseTime",
             description: "Time in seconds to get from one end to another",
             zigbeeCommandOptions: {manufacturerCode},
             access: "STATE",
@@ -2354,7 +2428,7 @@ export const lumiModernExtend = {
             name: "calibration_status",
             lookup: {not_calibrated: 0, half_calibrated: 1, fully_calibrated: 2},
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x0426, type: 0x20},
+            attribute: "calibrationStatus",
             description: "Calibration status of the curtain (Not calibrated, Half calibrated, Fully calibrated)",
             zigbeeCommandOptions: {manufacturerCode},
             access: "STATE",
@@ -2379,7 +2453,7 @@ export const lumiModernExtend = {
             name: "identify_beep",
             lookup: {short: 0, "1_sec": 1, "2_sec": 2},
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x0404, type: 0x20},
+            attribute: "identifyBeep",
             description: "Device will beep for chosen time duration",
             zigbeeCommandOptions: {manufacturerCode},
             access: "ALL",
@@ -2391,7 +2465,7 @@ export const lumiModernExtend = {
             name: "power_on_behavior",
             lookup: {on: 0, previous: 1, off: 2, inverted: 3},
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x0517, type: 0x20},
+            attribute: "powerOnBehavior",
             description: "Controls the behavior when the device is powered on after power loss",
             entityCategory: "config",
             zigbeeCommandOptions: {manufacturerCode},
@@ -2401,7 +2475,7 @@ export const lumiModernExtend = {
         modernExtend.binary<"manuSpecificLumi", ManuSpecificLumi>({
             name: "power_outage_memory",
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x0201, type: 0x10},
+            attribute: "powerOutageMemory",
             valueOn: [true, 1],
             valueOff: [false, 0],
             description: "Controls the behavior when the device is powered on after power loss",
@@ -2588,7 +2662,7 @@ export const lumiModernExtend = {
         modernExtend.numeric<"manuSpecificLumi", ManuSpecificLumi>({
             name: "overload_protection",
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x020b, type: 0x39},
+            attribute: "overloadProtection",
             description: "Maximum allowed load, turns off if exceeded",
             valueMin: 100,
             valueMax: 3840,
@@ -2707,7 +2781,7 @@ export const lumiModernExtend = {
         modernExtend.binary<"manuSpecificLumi", ManuSpecificLumi>({
             name: "flip_indicator_light",
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x00f0, type: 0x20},
+            attribute: "flipIndicatorLight",
             valueOn: ["ON", 1],
             valueOff: ["OFF", 0],
             description: "After turn on, the indicator light turns on while switch is off, and vice versa",
@@ -2748,7 +2822,7 @@ export const lumiModernExtend = {
             name: "click_mode",
             lookup: {fast: 1, multi: 2},
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x0125, type: 0x20},
+            attribute: "clickMode",
             description:
                 "Click mode for wireless button. fast: only supports single click but allows faster response time." +
                 "multi: supports multiple types of clicks but is slower, because it awaits multiple clicks.",
@@ -2796,7 +2870,7 @@ export const lumiModernExtend = {
         modernExtend.binary<"manuSpecificLumi", ManuSpecificLumi>({
             name: "lock_relay",
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x0285, type: 0x20},
+            attribute: "lockRelay",
             valueOn: [true, 1],
             valueOff: [false, 0],
             description: "Locks relay and prevents it from operating",
@@ -2828,7 +2902,7 @@ export const lumiModernExtend = {
             name: "mode_switch",
             lookup: {quick_mode: 1, anti_flicker_mode: 4},
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x0004, type: 0x21},
+            attribute: "modeSwitch",
             description: "Anti flicker mode can be used to solve blinking issues of some lights. Quick mode makes the device respond faster.",
             entityCategory: "config",
             zigbeeCommandOptions: {manufacturerCode},
@@ -2876,7 +2950,7 @@ export const lumiModernExtend = {
             name: "sensitivity_adjustment",
             lookup: {high: 1, medium: 2, low: 3},
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x010e, type: 0x20},
+            attribute: "sensitivityAdjustment",
             description: "Sensitivity adjustment for the device",
             zigbeeCommandOptions: {manufacturerCode},
             access: "SET",
@@ -2888,7 +2962,7 @@ export const lumiModernExtend = {
             name: "report_interval",
             lookup: {"1s": 0x01, "5s": 0x02, "10s": 0x03},
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x0110, type: 0x20},
+            attribute: "reportInterval",
             description: "Reporting interval for the device",
             zigbeeCommandOptions: {manufacturerCode},
             access: "SET",
@@ -3246,7 +3320,7 @@ export const lumiModernExtend = {
             name: "movement",
             lookup: {unknown_0: 0, unknown_1: 1, no_presence: 2, movement: 3, no_movement: 4},
             cluster: "manuSpecificLumi",
-            attribute: {ID: 0x0160, type: 0x20},
+            attribute: "fp1eMovement",
             zigbeeCommandOptions: {disableDefaultResponse: true},
             description: "Is movement detected?",
             access: "STATE_GET",
@@ -6507,13 +6581,13 @@ export const fromZigbee = {
         type: ["attributeReport", "readResponse"],
         convert: (model, msg, publish, options, meta) => {
             if (msg.data.curtainHandOpen !== undefined) {
-                return {hand_open: msg.data.curtainHandOpen === 0};
+                return {hand_open: msg.data.curtainHandOpen};
             }
             if (msg.data.curtainReverse !== undefined) {
-                return {reverse_direction: msg.data.curtainReverse === 1};
+                return {reverse_direction: msg.data.curtainReverse};
             }
             if (msg.data.curtainCalibrated !== undefined) {
-                return {limits_calibration: msg.data.curtainCalibrated === 1 ? "calibrated" : "recalibrate"};
+                return {limits_calibration: msg.data.curtainCalibrated ? "calibrated" : "recalibrate"};
             }
         },
     } satisfies Fz.Converter<"manuSpecificLumi", ManuSpecificLumi, ["attributeReport", "readResponse"]>,
@@ -7495,7 +7569,7 @@ export const toZigbee = {
             return {state: {flip_indicator_light: value}};
         },
         convertGet: async (entity, key, meta) => {
-            await entity.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x00f0], manufacturerOptions.lumi);
+            await entity.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["flipIndicatorLight"], manufacturerOptions.lumi);
         },
     } satisfies Tz.Converter,
     lumi_power_outage_count: {
@@ -8074,7 +8148,7 @@ export const toZigbee = {
             return {state: {overload_protection: value}};
         },
         convertGet: async (entity, key, meta) => {
-            await entity.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x020b], manufacturerOptions.lumi);
+            await entity.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["overloadProtection"], manufacturerOptions.lumi);
         },
     } satisfies Tz.Converter,
     lumi_switch_mode_switch: {
@@ -8339,11 +8413,11 @@ export const toZigbee = {
                     "WS-USC01",
                 ].includes(meta.mapped.model)
             ) {
-                await entity.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0201]);
+                await entity.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["powerOutageMemory"]);
             } else if (["ZNCZ02LM", "QBCZ11LM", "ZNCZ11LM", "ZNCZ12LM"].includes(meta.mapped.model)) {
                 await entity.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0xfff0]);
             } else if (["ZNQBKG38LM", "ZNQBKG39LM", "ZNQBKG40LM", "ZNQBKG41LM"].includes(meta.mapped.model)) {
-                await entity.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0517]);
+                await entity.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["powerOnBehavior"]);
             } else {
                 throw new Error("Not supported");
             }
@@ -8500,7 +8574,7 @@ export const toZigbee = {
             return {state: {lock_relay: value}};
         },
         convertGet: async (entity, key, meta) => {
-            await entity.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0285], manufacturerOptions.lumi);
+            await entity.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["lockRelay"], manufacturerOptions.lumi);
         },
     } satisfies Tz.Converter,
     lumi_operation_mode_opple: {
@@ -8724,7 +8798,11 @@ export const toZigbee = {
     lumi_curtain_hand_open: {
         key: ["hand_open"],
         convertSet: async (entity, key, value, meta) => {
-            await entity.write<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", {curtainHandOpen: value ? 0 : 1}, manufacturerOptions.lumi);
+            await entity.write<"manuSpecificLumi", ManuSpecificLumi>(
+                "manuSpecificLumi",
+                {curtainHandOpen: value as boolean},
+                manufacturerOptions.lumi,
+            );
         },
         convertGet: async (entity, key, meta) => {
             await entity.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["curtainHandOpen"], manufacturerOptions.lumi);
@@ -8733,7 +8811,11 @@ export const toZigbee = {
     lumi_curtain_reverse: {
         key: ["reverse_direction"],
         convertSet: async (entity, key, value, meta) => {
-            await entity.write<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", {curtainReverse: value ? 1 : 0}, manufacturerOptions.lumi);
+            await entity.write<"manuSpecificLumi", ManuSpecificLumi>(
+                "manuSpecificLumi",
+                {curtainReverse: value as boolean},
+                manufacturerOptions.lumi,
+            );
         },
         convertGet: async (entity, key, meta) => {
             await entity.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["curtainReverse"], manufacturerOptions.lumi);
@@ -8779,7 +8861,11 @@ export const toZigbee = {
         convertSet: async (entity, key, value, meta) => {
             switch (value) {
                 case "recalibrate":
-                    await entity.write<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", {curtainCalibrated: 0}, manufacturerOptions.lumi);
+                    await entity.write<"manuSpecificLumi", ManuSpecificLumi>(
+                        "manuSpecificLumi",
+                        {curtainCalibrated: false},
+                        manufacturerOptions.lumi,
+                    );
                     break;
                 case "open":
                     await entity.write("genMultistateOutput", {presentValue: 1}, manufacturerOptions.lumi);
@@ -8820,13 +8906,13 @@ export const toZigbee = {
             const waitForStateTransition = async (initialStates: number[], desiredStates: number[]): Promise<void> => {
                 return await new Promise<void>((resolve) => {
                     const checkState = async () => {
-                        const result = await entity.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0421]);
+                        const result = await entity.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["status"]);
 
-                        if (result && !initialStates.includes(result[0x0421] as number)) {
+                        if (result && !initialStates.includes(result.status)) {
                             const checkDesiredState = async () => {
-                                const result2 = await entity.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", [0x0421]);
+                                const result2 = await entity.read<"manuSpecificLumi", ManuSpecificLumi>("manuSpecificLumi", ["status"]);
 
-                                if (result2 && desiredStates.includes(result2[0x0421] as number)) {
+                                if (result2 && desiredStates.includes(result2.status as number)) {
                                     resolve();
                                 } else {
                                     setTimeout(checkDesiredState, 500);
