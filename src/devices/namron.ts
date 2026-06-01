@@ -1608,6 +1608,7 @@ export const definitions: DefinitionWithExtend[] = [
         vendor: "Namron",
         description: "Zigbee thermostat 16A",
         whiteLabel: [{model: "4512759", fingerprint: [{modelID: "4512759"}]}],
+        meta: {thermostat: {dontMapPIHeatingDemand: true}},
         fromZigbee: [fzLocal.namron_thermostat2, fz.metering, fz.electrical_measurement, namron.fromZigbee.namron_hvac_user_interface],
         toZigbee: [
             {
@@ -1660,7 +1661,6 @@ export const definitions: DefinitionWithExtend[] = [
                 attribute: "windowState",
                 description: "On if window is currently detected as open",
             }),
-
             m.numeric<"hvacThermostat", namron.NamronHvacThermostat>({
                 name: "backlight_level",
                 unit: "%",
@@ -1681,14 +1681,46 @@ export const definitions: DefinitionWithExtend[] = [
                 description: "Enable or Disable display light",
                 entityCategory: "config",
             }),
-
             m.enumLookup<"hvacThermostat", namron.NamronHvacThermostat>({
                 name: "sensor_mode",
                 lookup: {air: 0, floor: 1, both: 2, percent: 6},
                 cluster: "hvacThermostat",
                 attribute: "sensorMode",
-                description: "Select which sensor the thermostat uses to control the room",
+                description:
+                    "Select which sensor the thermostat uses to control the room. In 'percent' mode, temperature sensors are bypassed and output is set by pi_heating_demand.",
                 entityCategory: "config",
+            }),
+            m.numeric<"hvacThermostat", namron.NamronHvacThermostat>({
+                name: "regulator_duty_cycle",
+                unit: "min",
+                valueMin: 1,
+                valueMax: 30,
+                valueStep: 1,
+                cluster: "hvacThermostat",
+                attribute: "regulator",
+                description: "Regulator duty cycle period in minutes (1-30).",
+                entityCategory: "config",
+            }),
+            m.numeric<"hvacThermostat", namron.NamronHvacThermostat>({
+                name: "regulator_percentage",
+                unit: "%",
+                valueMin: 0,
+                valueMax: 100,
+                valueStep: 5,
+                cluster: "hvacThermostat",
+                attribute: "regulatorPercentage",
+                description: "Regulator setting in %, In 'percent' sensor mode this sets duty output target.",
+            }),
+            m.numeric<"hvacThermostat", undefined>({
+                name: "pi_heating_demand",
+                unit: "%",
+                valueMin: 0,
+                valueMax: 100,
+                valueStep: 5,
+                cluster: "hvacThermostat",
+                attribute: {ID: 0x0008, type: Zcl.DataType.UINT8},
+                description:
+                    "Heating demand in percent (0-100). In 'percent' sensor mode this sets duty output target, but reads report current instantaneous output so read values can differ from the last set value.",
             }),
         ],
         exposes: [

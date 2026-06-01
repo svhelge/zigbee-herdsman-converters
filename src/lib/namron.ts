@@ -32,6 +32,7 @@ export interface NamronHvacThermostat {
         sensorMode: number;
         displayActiveBacklight: number;
         fault: number;
+        regulator: number;
         backlightOnoff: boolean;
         timeSync: boolean;
         deviceTime: number;
@@ -913,6 +914,12 @@ export const namronExtend = {
                     name: "fault",
                     ID: 0x8006,
                     type: Zcl.DataType.ENUM8,
+                    manufacturerCode: Zcl.ManufacturerCode.SHENZHEN_SUNRICHER_TECHNOLOGY_LTD,
+                },
+                regulator: {
+                    name: "regulator",
+                    ID: 0x8007,
+                    type: Zcl.DataType.UINT8,
                     manufacturerCode: Zcl.ManufacturerCode.SHENZHEN_SUNRICHER_TECHNOLOGY_LTD,
                 },
                 backlightOnoff: {
