@@ -46,6 +46,7 @@ const {
     lumiLedDisabledNight,
     lumiFlipIndicatorLight,
     lumiPreventReset,
+    lumiAqaraH2EuShutterSwitchAction,
     lumiClickMode,
     lumiSlider,
     lumiSetEventMode,
@@ -75,7 +76,6 @@ const {manufacturerCode} = lumi;
 const aqaraH2EuShutterSwitchEndpoints = {top_wireless_button: 3, bottom_wireless_button: 4} as const;
 type AqaraH2EuShutterSwitchEndpointName = keyof typeof aqaraH2EuShutterSwitchEndpoints;
 const aqaraH2EuShutterSwitchEndpointNames: AqaraH2EuShutterSwitchEndpointName[] = ["top_wireless_button", "bottom_wireless_button"];
-const aqaraH2EuShutterSwitchActionLookup = {hold: 0, single: 1, double: 2, release: 255};
 const aqaraH2EuShutterSwitchMultiEndpointSkip = ["energy", "position", "state", "tilt"];
 
 async function configureAqaraH2EuShutterSwitch(device: Zh.Device, coordinatorEndpoint: Zh.Endpoint) {
@@ -3391,6 +3391,13 @@ export const definitions: DefinitionWithExtend[] = [
         extend: [lumi.modernExtend.addManuSpecificLumiCluster(), lumiZigbeeOTA(), lumiLight({colorTemp: true, powerOutageMemory: "switch"})],
     },
     {
+        zigbeeModel: ["lumi.light.acn040"],
+        model: "SSWQD22LM",
+        vendor: "Aqara",
+        description: "Spotlight T2 Pro",
+        extend: [lumi.modernExtend.addManuSpecificLumiCluster(), lumiZigbeeOTA(), lumiLight({colorTemp: true, colorTempRange: [166, 370]})],
+    },
+    {
         zigbeeModel: ["lumi.switch.n0agl1"],
         model: "SSM-U01",
         vendor: "Aqara",
@@ -5126,6 +5133,7 @@ export const definitions: DefinitionWithExtend[] = [
         configure: configureAqaraH2EuShutterSwitch,
         extend: [
             lumi.modernExtend.addManuSpecificLumiCluster(),
+            lumiAqaraH2EuShutterSwitchAction(),
             lumiZigbeeOTA(),
             m.deviceEndpoints({
                 endpoints: aqaraH2EuShutterSwitchEndpoints,
@@ -5133,10 +5141,6 @@ export const definitions: DefinitionWithExtend[] = [
             }),
             m.electricityMeter({cluster: "metering", power: false, energy: {divisor: 1000}}),
             m.windowCovering({controls: ["lift"], coverInverted: true, configureReporting: true}),
-            lumiAction({
-                actionLookup: aqaraH2EuShutterSwitchActionLookup,
-                endpointNames: aqaraH2EuShutterSwitchEndpointNames,
-            }),
             lumiMultiClick({description: "Multi-click mode for top wireless button", endpointName: "top_wireless_button"}),
             lumiMultiClick({description: "Multi-click mode for bottom wireless button", endpointName: "bottom_wireless_button"}),
         ],
