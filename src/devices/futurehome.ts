@@ -206,11 +206,6 @@ const futurehomeExtend = {
             description: "closuresDoorLock - enablePrivacyModeButton",
             valueOn: ["ON", 1],
             valueOff: ["OFF", 0],
-            reporting: {
-                min: 0,
-                max: "1_HOUR",
-                change: null,
-            },
             zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
         }),
         m.enumLookup({
