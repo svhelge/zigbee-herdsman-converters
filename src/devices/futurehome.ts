@@ -284,9 +284,9 @@ const futurehomeExtend = {
                 } satisfies Tz.Converter,
             ],
             exposes: [
-                exposes.enum("charging_start", ea.SET, ["start"]).withLabel("Start charging").withDescription("Press to start charging"),
-                exposes.enum("charging_stop", ea.SET, ["stop"]).withLabel("Stop charging").withDescription("Press to stop charging"),
-                exposes.enum("charging_pause", ea.SET, ["pause"]).withLabel("Pause charging").withDescription("Press to pause charging"),
+                e.enum("charging_start", ea.SET, ["start"]).withLabel("Start charging").withDescription("Press to start charging"),
+                e.enum("charging_stop", ea.SET, ["stop"]).withLabel("Stop charging").withDescription("Press to stop charging"),
+                e.enum("charging_pause", ea.SET, ["pause"]).withLabel("Pause charging").withDescription("Press to pause charging"),
             ],
         };
     },
@@ -365,12 +365,12 @@ const futurehomeExtend = {
                 } satisfies Fz.Converter<"haApplianceControl", FuturehomeHaApplianceControl, ["attributeReport", "readResponse"]>,
             ],
             exposes: [
-                exposes.binary("is_charging", ea.STATE, "true", "false").withDescription("Indicates if an active charging session is ongoing."),
-                exposes.text("charging_start_datetime", ea.STATE).withDescription("Date and time when charging started (ISO 8601 format)"),
-                exposes.text("charging_end_datetime", ea.STATE).withDescription("Date and time when charging ended (ISO 8601 format)"),
-                exposes.binary("is_charger_connected", ea.STATE, "true", "false").withDescription("Indicates if the charger is connected."),
-                exposes.text("connected_start_datetime", ea.STATE).withDescription("Date and time when charger was connected."),
-                exposes.text("connected_end_datetime", ea.STATE).withDescription("Date and time when charger was disconnected."),
+                e.binary("is_charging", ea.STATE, true, false).withDescription("Indicates if an active charging session is ongoing."),
+                e.text("charging_start_datetime", ea.STATE).withDescription("Date and time when charging started (ISO 8601 format)"),
+                e.text("charging_end_datetime", ea.STATE).withDescription("Date and time when charging ended (ISO 8601 format)"),
+                e.binary("is_charger_connected", ea.STATE, true, false).withDescription("Indicates if the charger is connected."),
+                e.text("connected_start_datetime", ea.STATE).withDescription("Date and time when charger was connected."),
+                e.text("connected_end_datetime", ea.STATE).withDescription("Date and time when charger was disconnected."),
             ],
         };
     },
