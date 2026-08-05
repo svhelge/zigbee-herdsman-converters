@@ -2667,11 +2667,25 @@ export interface EnumLookupArgs<Cl extends string | number, Custom extends TCust
     entityCategory?: "config" | "diagnostic";
     label?: string;
     fzConvert?: Fz.Converter<Cl, Custom, ["attributeReport", "readResponse"]>["convert"];
+    homeassistant?: exposes.HomeAssistant;
 }
 export function enumLookup<Cl extends string | number, Custom extends TCustomCluster | undefined = undefined>(
     args: EnumLookupArgs<Cl, Custom>,
 ): ModernExtend {
-    const {name, lookup, cluster, attribute, description, zigbeeCommandOptions, endpointName, reporting, entityCategory, label, fzConvert} = args;
+    const {
+        name,
+        lookup,
+        cluster,
+        attribute,
+        description,
+        zigbeeCommandOptions,
+        endpointName,
+        reporting,
+        entityCategory,
+        label,
+        fzConvert,
+        homeassistant,
+    } = args;
     const attributeKey = isString(attribute) ? attribute : attribute.ID;
     const access = ea[args.access ?? "ALL"];
 
@@ -2679,6 +2693,7 @@ export function enumLookup<Cl extends string | number, Custom extends TCustomClu
     if (endpointName) expose = expose.withEndpoint(endpointName);
     if (entityCategory) expose = expose.withCategory(entityCategory);
     if (label !== undefined) expose = expose.withLabel(label);
+    if (homeassistant) expose = expose.withHomeAssistant(homeassistant);
 
     const fromZigbee = [
         {
