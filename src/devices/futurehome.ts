@@ -190,13 +190,15 @@ const futurehomeExtend = {
             access: "STATE_GET",
             zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
         }),
-        m.numeric({
+        m.binary({
             name: "actuator_enabled",
             cluster: "closuresDoorLock",
             attribute: "actuatorEnabled",
-            description: "closuresDoorLock - presentValue",
-            valueMin: -1000,
-            valueMax: 1000,
+            description:
+                "closuresDoorLock - actuatorEnabled, The ActuatorEnabled attribute indicates if the lock is currently able to (Enabled) or not able to (Disabled) process remote Lock, Unlock, or Unlock with Timeout commands.",
+            valueOn: ["ON", 1],
+            valueOff: ["OFF", 0],
+            access: "STATE_GET",
             zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
         }),
         m.binary({
@@ -206,6 +208,7 @@ const futurehomeExtend = {
             description: "closuresDoorLock - enablePrivacyModeButton",
             valueOn: ["ON", 1],
             valueOff: ["OFF", 0],
+            access: "STATE",
             zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
         }),
         m.enumLookup({
@@ -219,6 +222,16 @@ const futurehomeExtend = {
                 unlocked: 0x02,
                 undefined: 0xff,
             },
+            access: "STATE_GET",
+            reporting: {min: 5, max: "1_HOUR", change: 1},
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        }),
+        m.numeric({
+            name: "lock_state_number",
+            cluster: "closuresDoorLock",
+            attribute: "lockState",
+            description: "closuresDoorLock - lockState number",
+            access: "STATE_GET",
             reporting: {min: 5, max: "1_HOUR", change: 1},
             zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
         }),
@@ -284,9 +297,21 @@ const futurehomeExtend = {
                 } satisfies Tz.Converter,
             ],
             exposes: [
-                e.enum("charging_start", ea.SET, ["start"]).withLabel("Start charging").withDescription("Press to start charging"),
-                e.enum("charging_stop", ea.SET, ["stop"]).withLabel("Stop charging").withDescription("Press to stop charging"),
-                e.enum("charging_pause", ea.SET, ["pause"]).withLabel("Pause charging").withDescription("Press to pause charging"),
+                e
+                    .enum("charging_start", ea.SET, ["start"])
+                    .withLabel("Start charging")
+                    .withDescription("Press to start charging")
+                    .withHomeAssistant({icon: "mdi:arrow-right-drop-circle"}),
+                e
+                    .enum("charging_stop", ea.SET, ["stop"])
+                    .withLabel("Stop charging")
+                    .withDescription("Press to stop charging")
+                    .withHomeAssistant({icon: "mdi:stop-circle"}),
+                e
+                    .enum("charging_pause", ea.SET, ["pause"])
+                    .withLabel("Pause charging")
+                    .withDescription("Press to pause charging")
+                    .withHomeAssistant({icon: "mdi:pause-circle"}),
             ],
         };
     },
@@ -308,10 +333,10 @@ const futurehomeExtend = {
                         const now = new Date();
                         const currentSession = globalStore.getValue(meta.device, "charging_session", {
                             isCharging: false,
-                            isChargerConnected: false,
+                            isPlugConnected: false,
                         }) as {
                             isCharging: boolean;
-                            isChargerConnected: boolean;
+                            isPlugConnected: boolean;
                             chargingStartTime?: string;
                             chargingEndTime?: string;
                             connectedStartTime?: string;
@@ -320,8 +345,8 @@ const futurehomeExtend = {
 
                         const isCharging = status === 0x02;
                         const wasCharging = currentSession.isCharging;
-                        const isChargerConnected = status !== 0x00;
-                        const wasChargerConnected = currentSession.isChargerConnected;
+                        const isPlugConnected = status !== 0x00;
+                        const wasPlugConnected = currentSession.isPlugConnected;
 
                         // Charging started
                         if (isCharging && !wasCharging) {
@@ -339,25 +364,25 @@ const futurehomeExtend = {
                             result.charging_end_datetime = currentSession.chargingEndTime;
                         }
 
-                        // charger connected
-                        if (isChargerConnected && !wasChargerConnected) {
+                        // Plug connected
+                        if (isPlugConnected && !wasPlugConnected) {
                             currentSession.connectedStartTime = utils.toLocalISOString(now);
                             currentSession.connectedEndTime = undefined;
-                            currentSession.isChargerConnected = true;
+                            currentSession.isPlugConnected = true;
                             result.connected_start_datetime = currentSession.connectedStartTime;
                             result.connected_end_datetime = currentSession.connectedEndTime;
                         }
 
-                        // charger disconnected
-                        if (!isChargerConnected && wasChargerConnected) {
+                        // Plug disconnected
+                        if (!isPlugConnected && wasPlugConnected) {
                             currentSession.connectedEndTime = utils.toLocalISOString(now);
-                            currentSession.isChargerConnected = false;
+                            currentSession.isPlugConnected = false;
                             result.connected_end_datetime = currentSession.connectedEndTime;
                         }
 
                         // Expose current charging and connection status
                         result.is_charging = currentSession.isCharging;
-                        result.is_charger_connected = currentSession.isChargerConnected;
+                        result.is_plug_connected = currentSession.isPlugConnected;
 
                         globalStore.putValue(meta.device, "charging_session", currentSession);
                         return result;
@@ -365,10 +390,16 @@ const futurehomeExtend = {
                 } satisfies Fz.Converter<"haApplianceControl", FuturehomeHaApplianceControl, ["attributeReport", "readResponse"]>,
             ],
             exposes: [
-                e.binary("is_charging", ea.STATE, true, false).withDescription("Indicates if an active charging session is ongoing."),
+                e
+                    .binary("is_charging", ea.STATE, true, false)
+                    .withDescription("Indicates if an active charging session is ongoing.")
+                    .withHomeAssistant({deviceClass: "battery_charging"}),
                 e.text("charging_start_datetime", ea.STATE).withDescription("Date and time when charging started (ISO 8601 format)"),
                 e.text("charging_end_datetime", ea.STATE).withDescription("Date and time when charging ended (ISO 8601 format)"),
-                e.binary("is_charger_connected", ea.STATE, true, false).withDescription("Indicates if the charger is connected."),
+                e
+                    .binary("is_plug_connected", ea.STATE, true, false)
+                    .withDescription("Indicates if the plug is connected.")
+                    .withHomeAssistant({deviceClass: "plug"}), // ({deviceClass: "plug", preserveName: true}),
                 e.text("connected_start_datetime", ea.STATE).withDescription("Date and time when charger was connected."),
                 e.text("connected_end_datetime", ea.STATE).withDescription("Date and time when charger was disconnected."),
             ],
@@ -592,6 +623,7 @@ export const definitions: DefinitionWithExtend[] = [
                 valueMax: 32,
                 valueStep: 1,
                 reporting: {min: "10_SECONDS", max: "1_HOUR", change: 1},
+                // homeassistant: {icon: "mdi:target"},
                 zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
             }),
             futurehomeExtend.chargerSessionTimings(),
@@ -602,6 +634,7 @@ export const definitions: DefinitionWithExtend[] = [
                 valueOff: ["UNLOCK", 0x00],
                 valueOn: ["LOCK", 0x02],
                 description: "Permanently lock cable when not charging.",
+                // homeassistant: {icon: "mdi:lock"},
                 zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
             }),
             m.numeric({
@@ -624,6 +657,7 @@ export const definitions: DefinitionWithExtend[] = [
                 description: "Automatically start charging when a car is connected.",
                 valueOff: ["OFF", 0],
                 valueOn: ["ON", 1],
+                entityCategory: "config",
                 zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
             }),
             futurehomeExtend.sessionEnergyDuration(),
