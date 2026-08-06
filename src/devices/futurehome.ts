@@ -236,14 +236,6 @@ const futurehomeExtend = {
             zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
         }),
         m.numeric({
-            name: "lock_type",
-            cluster: "closuresDoorLock",
-            attribute: "lockType",
-            description: "closuresDoorLock - lockType",
-            access: "STATE_GET",
-            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
-        }),
-        m.numeric({
             name: "operating_mode",
             cluster: "closuresDoorLock",
             attribute: "operatingMode",
