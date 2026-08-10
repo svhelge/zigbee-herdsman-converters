@@ -103,6 +103,28 @@ const futurehomeExtend = {
             commandsResponse: {},
         }),
     chargerExtraAttr: () => [
+        // m.numeric<"haApplianceControl", FuturehomeHaApplianceControl>({
+        //     name: "start_t",
+        //     cluster: "haApplianceControl",
+        //     attribute: "chargingSessionStartTime",
+        //     description: "Start time of charging session. Time in seconds. Should be converted to date and time.",
+        //     access: "STATE",
+        //     scale: 1.0,
+        //     unit: "s",
+        //     reporting: {min: 5, max: "1_HOUR", change: 1},
+        //     zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        // }),
+        // m.numeric<"haApplianceControl", FuturehomeHaApplianceControl>({
+        //     name: "end_t",
+        //     cluster: "haApplianceControl",
+        //     attribute: "chargingSessionEndTime",
+        //     description: "End time of charging session. Time in seconds. Should be converted to date and time.",
+        //     access: "STATE",
+        //     scale: 1.0,
+        //     unit: "s",
+        //     reporting: {min: 5, max: "1_HOUR", change: 1},
+        //     zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        // }),
         m.numeric<"haApplianceControl", FuturehomeXtraHaApplianceControl>({
             name: "a5",
             cluster: "haApplianceControl",
@@ -238,6 +260,22 @@ const futurehomeExtend = {
             access: "STATE_GET",
             reporting: {min: 5, max: "1_HOUR", change: 1},
             zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        }),
+        m.poll({
+            key: "measurement",
+            option: exposes.options.measurement_poll_interval().withDescription("Polling interval for xtra atrr a5 etc"),
+            defaultIntervalSeconds: 20,
+            poll: async (device) => {
+                const endpoint = device.endpoints.find((e) => e.supportsInputCluster("haApplianceControl"));
+                await endpoint.read<"haApplianceControl", FuturehomeXtraHaApplianceControl>("haApplianceControl", [
+                    "a5",
+                    "a6",
+                    "a7",
+                    "a8",
+                    "ab",
+                    "a10",
+                ]);
+            },
         }),
     ],
     chargingCommand: (): ModernExtend => {
