@@ -103,28 +103,6 @@ const futurehomeExtend = {
             commandsResponse: {},
         }),
     chargerExtraAttr: () => [
-        // m.numeric<"haApplianceControl", FuturehomeHaApplianceControl>({
-        //     name: "start_t",
-        //     cluster: "haApplianceControl",
-        //     attribute: "chargingSessionStartTime",
-        //     description: "Start time of charging session. Time in seconds. Should be converted to date and time.",
-        //     access: "STATE",
-        //     scale: 1.0,
-        //     unit: "s",
-        //     reporting: {min: 5, max: "1_HOUR", change: 1},
-        //     zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
-        // }),
-        // m.numeric<"haApplianceControl", FuturehomeHaApplianceControl>({
-        //     name: "end_t",
-        //     cluster: "haApplianceControl",
-        //     attribute: "chargingSessionEndTime",
-        //     description: "End time of charging session. Time in seconds. Should be converted to date and time.",
-        //     access: "STATE",
-        //     scale: 1.0,
-        //     unit: "s",
-        //     reporting: {min: 5, max: "1_HOUR", change: 1},
-        //     zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
-        // }),
         m.numeric<"haApplianceControl", FuturehomeXtraHaApplianceControl>({
             name: "a5",
             cluster: "haApplianceControl",
