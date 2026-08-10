@@ -1,7 +1,6 @@
 import {Zcl} from "zigbee-herdsman";
 import * as exposes from "../lib/exposes";
 import * as m from "../lib/modernExtend";
-import * as globalStore from "../lib/store";
 import * as tuya from "../lib/tuya";
 import type {DefinitionWithExtend, Fz, KeyValue, ModernExtend, Tz} from "../lib/types";
 import * as utils from "../lib/utils";
@@ -14,8 +13,8 @@ interface FuturehomeHaApplianceControl {
         autoCharge: number;
         energyMeterStart: number;
         energyMeterNow: number;
-        chargingSessionStartT: number;
-        chargingSessionEndT: number;
+        chargingSessionStartTime: number;
+        chargingSessionEndTime: number;
         status: number;
     };
     commands: never;
@@ -104,28 +103,28 @@ const futurehomeExtend = {
             commandsResponse: {},
         }),
     chargerExtraAttr: () => [
-        m.numeric<"haApplianceControl", FuturehomeHaApplianceControl>({
-            name: "start_t",
-            cluster: "haApplianceControl",
-            attribute: "chargingSessionStartT",
-            description: "Start time of charging session. Time in seconds. Should be converted to date and time.",
-            access: "STATE",
-            scale: 1.0,
-            unit: "s",
-            reporting: {min: 5, max: "1_HOUR", change: 1},
-            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
-        }),
-        m.numeric<"haApplianceControl", FuturehomeHaApplianceControl>({
-            name: "end_t",
-            cluster: "haApplianceControl",
-            attribute: "chargingSessionEndT",
-            description: "End time of charging session. Time in seconds. Should be converted to date and time.",
-            access: "STATE",
-            scale: 1.0,
-            unit: "s",
-            reporting: {min: 5, max: "1_HOUR", change: 1},
-            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
-        }),
+        // m.numeric<"haApplianceControl", FuturehomeHaApplianceControl>({
+        //     name: "start_t",
+        //     cluster: "haApplianceControl",
+        //     attribute: "chargingSessionStartTime",
+        //     description: "Start time of charging session. Time in seconds. Should be converted to date and time.",
+        //     access: "STATE",
+        //     scale: 1.0,
+        //     unit: "s",
+        //     reporting: {min: 5, max: "1_HOUR", change: 1},
+        //     zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        // }),
+        // m.numeric<"haApplianceControl", FuturehomeHaApplianceControl>({
+        //     name: "end_t",
+        //     cluster: "haApplianceControl",
+        //     attribute: "chargingSessionEndTime",
+        //     description: "End time of charging session. Time in seconds. Should be converted to date and time.",
+        //     access: "STATE",
+        //     scale: 1.0,
+        //     unit: "s",
+        //     reporting: {min: 5, max: "1_HOUR", change: 1},
+        //     zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        // }),
         m.numeric<"haApplianceControl", FuturehomeXtraHaApplianceControl>({
             name: "a5",
             cluster: "haApplianceControl",
@@ -138,7 +137,7 @@ const futurehomeExtend = {
             name: "a6",
             cluster: "haApplianceControl",
             attribute: "a6",
-            description: "a6",
+            description: "a6  ??",
             access: "STATE_GET",
             zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
         }),
@@ -241,6 +240,7 @@ const futurehomeExtend = {
             attribute: "operatingMode",
             description: "closuresDoorLock - operatingMode",
             access: "STATE_GET",
+            reporting: {min: 5, max: "1_HOUR", change: 1},
             zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
         }),
         m.numeric({
@@ -249,6 +249,7 @@ const futurehomeExtend = {
             attribute: "presentValue",
             description: "genMultistateValue - presentValue",
             access: "STATE_GET",
+            reporting: {min: 5, max: "1_HOUR", change: 1},
             zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
         }),
         m.numeric({
@@ -257,6 +258,7 @@ const futurehomeExtend = {
             attribute: "presentValue",
             description: "genMultistateInput - presentValue",
             access: "STATE_GET",
+            reporting: {min: 5, max: "1_HOUR", change: 1},
             zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
         }),
     ],
@@ -307,6 +309,35 @@ const futurehomeExtend = {
             ],
         };
     },
+    forceUnlock: (): ModernExtend => {
+        return {
+            isModernExtend: true,
+            toZigbee: [
+                {
+                    // based on tz.lock, but unlock only
+                    key: ["state"],
+                    convertSet: async (entity, key, value, meta) => {
+                        let state = utils.isString(value) ? value.toUpperCase() : null;
+                        if (utils.isObject(value) && value.state) {
+                            state = utils.isString(value.state) ? value.state.toUpperCase() : null;
+                        }
+                        utils.validateValue(state, ["UNLOCK"]);
+                        await entity.command("closuresDoorLock", "unlockDoor", {pincodevalue: Buffer.from("", "ascii")});
+                    },
+                    convertGet: async (entity, key, meta) => {
+                        await entity.read("closuresDoorLock", ["lockState"]);
+                    },
+                } satisfies Tz.Converter,
+            ],
+            exposes: [
+                e
+                    .enum("state", ea.ALL, ["UNLOCK"])
+                    .withProperty("state")
+                    .withLabel("Force plug to unlock")
+                    .withDescription("Try this if the plug is locked in the charger after charging is completed."),
+            ],
+        };
+    },
     chargerSessionTimings: (): ModernExtend => {
         return {
             isModernExtend: true,
@@ -323,60 +354,39 @@ const futurehomeExtend = {
                         }
 
                         const now = new Date();
-                        const currentSession = globalStore.getValue(meta.device, "charging_session", {
-                            isCharging: false,
-                            isPlugConnected: false,
-                        }) as {
-                            isCharging: boolean;
-                            isPlugConnected: boolean;
-                            chargingStartTime?: string;
-                            chargingEndTime?: string;
-                            connectedStartTime?: string;
-                            connectedEndTime?: string;
-                        };
+
+                        const wasCharging = (meta.state.is_charging as boolean) ?? false;
+                        const wasPlugConnected = (meta.state.is_plug_connected as boolean) ?? false;
 
                         const isCharging = status === 0x02;
-                        const wasCharging = currentSession.isCharging;
                         const isPlugConnected = status !== 0x00;
-                        const wasPlugConnected = currentSession.isPlugConnected;
 
                         // Charging started
                         if (isCharging && !wasCharging) {
-                            currentSession.chargingStartTime = utils.toLocalISOString(now);
-                            currentSession.chargingEndTime = undefined;
-                            currentSession.isCharging = true;
-                            result.charging_start_datetime = currentSession.chargingStartTime;
-                            result.charging_end_datetime = currentSession.chargingEndTime;
+                            result.charging_start_datetime = utils.toLocalISOString(now);
+                            result.charging_end_datetime = null;
                         }
 
                         // Charging ended
                         if (!isCharging && wasCharging) {
-                            currentSession.chargingEndTime = utils.toLocalISOString(now);
-                            currentSession.isCharging = false;
-                            result.charging_end_datetime = currentSession.chargingEndTime;
+                            result.charging_end_datetime = utils.toLocalISOString(now);
                         }
 
                         // Plug connected
                         if (isPlugConnected && !wasPlugConnected) {
-                            currentSession.connectedStartTime = utils.toLocalISOString(now);
-                            currentSession.connectedEndTime = undefined;
-                            currentSession.isPlugConnected = true;
-                            result.connected_start_datetime = currentSession.connectedStartTime;
-                            result.connected_end_datetime = currentSession.connectedEndTime;
+                            result.connected_start_datetime = utils.toLocalISOString(now);
+                            result.connected_end_datetime = null;
                         }
 
                         // Plug disconnected
                         if (!isPlugConnected && wasPlugConnected) {
-                            currentSession.connectedEndTime = utils.toLocalISOString(now);
-                            currentSession.isPlugConnected = false;
-                            result.connected_end_datetime = currentSession.connectedEndTime;
+                            result.connected_end_datetime = utils.toLocalISOString(now);
                         }
 
                         // Expose current charging and connection status
-                        result.is_charging = currentSession.isCharging;
-                        result.is_plug_connected = currentSession.isPlugConnected;
+                        result.is_charging = isCharging;
+                        result.is_plug_connected = isPlugConnected;
 
-                        globalStore.putValue(meta.device, "charging_session", currentSession);
                         return result;
                     },
                 } satisfies Fz.Converter<"haApplianceControl", FuturehomeHaApplianceControl, ["attributeReport", "readResponse"]>,
@@ -386,8 +396,8 @@ const futurehomeExtend = {
                     .binary("is_charging", ea.STATE, true, false)
                     .withDescription("Indicates if an active charging session is ongoing.")
                     .withHomeAssistant({deviceClass: "battery_charging"}),
-                e.text("charging_start_datetime", ea.STATE).withDescription("Date and time when charging started (ISO 8601 format)"),
-                e.text("charging_end_datetime", ea.STATE).withDescription("Date and time when charging ended (ISO 8601 format)"),
+                e.text("charging_start_datetime", ea.STATE).withDescription("Date and time when charging started."),
+                e.text("charging_end_datetime", ea.STATE).withDescription("Date and time when charging ended."),
                 e
                     .binary("is_plug_connected", ea.STATE, true, false)
                     .withDescription("Indicates if the plug is connected.")
@@ -406,43 +416,69 @@ const futurehomeExtend = {
                     type: ["attributeReport", "readResponse"],
                     convert: (model, msg, publish, options, meta) => {
                         const result: KeyValue = {};
-                        let energyStart = meta.state?.energy_meter_start !== undefined ? meta.state.energy_meter_start : null;
-                        let energyNow = meta.state?.energy_meter_now !== undefined ? meta.state.energy_meter_now : null;
-                        let startT = meta.state?.start_t !== undefined ? meta.state.start_t : null;
-                        let endT = meta.state?.end_t !== undefined ? meta.state.end_t : null;
-                        if (msg.data.energyMeterStart !== undefined) {
-                            energyStart = msg.data.energyMeterStart / 1000;
-                        }
-                        if (msg.data.energyMeterNow !== undefined) {
-                            energyNow = msg.data.energyMeterNow / 1000;
-                        }
-                        if (msg.data.chargingSessionStartT !== undefined) {
-                            startT = msg.data.chargingSessionStartT;
-                        }
-                        if (msg.data.chargingSessionEndT !== undefined) {
-                            endT = msg.data.chargingSessionEndT;
-                        }
-                        if (energyStart !== null && energyNow !== null) {
-                            result.session_energy = utils.precisionRound((energyNow as number) - (energyStart as number), 3);
-                        }
-                        if (startT !== null && endT !== null) {
-                            result.charging_duration = (endT as number) - (startT as number);
-                        }
+
+                        const energyMeterStart =
+                            msg.data.energyMeterStart !== undefined
+                                ? msg.data.energyMeterStart / 1000
+                                : (meta.state?.energy_meter_start as number | undefined);
+
+                        const energyMeterNow =
+                            msg.data.energyMeterNow !== undefined
+                                ? msg.data.energyMeterNow / 1000
+                                : (meta.state?.energy_meter_now as number | undefined);
+
+                        result.energy_meter_start = energyMeterStart;
+                        result.energy_meter_now = energyMeterNow;
+
+                        const startTime =
+                            msg.data.chargingSessionStartTime !== undefined
+                                ? msg.data.chargingSessionStartTime
+                                : (meta.state?.charging_session_start_time as number | undefined);
+                        const endTime =
+                            msg.data.chargingSessionEndTime !== undefined
+                                ? msg.data.chargingSessionEndTime
+                                : (meta.state?.charing_session_end_time as number | undefined);
+
+                        result.charging_session_start_time = startTime;
+                        result.charing_session_end_time = endTime;
+
+                        result.session_energy = utils.precisionRound((energyMeterNow as number) - (energyMeterStart as number), 3);
+                        result.charging_duration = (endTime as number) - (startTime as number);
                         return result;
                     },
                 } satisfies Fz.Converter<"haApplianceControl", FuturehomeHaApplianceControl, ["attributeReport", "readResponse"]>,
             ],
             exposes: [
-                exposes
+                e
                     .numeric("session_energy", ea.STATE)
                     .withLabel("Session energy")
                     .withDescription("For ongoining or last session as reported by the charger.")
                     .withUnit("kWh"),
-                exposes
+                e.numeric("energy_meter_start", ea.STATE).withDescription("Energy reading at the start of the session.").withUnit("kWh"),
+                e.numeric("energy_meter_now", ea.STATE).withDescription("Current or final energy reading of the session.").withUnit("kWh"),
+                e
                     .numeric("charging_duration", ea.STATE)
-                    .withDescription("Charging duration for ongoing or last session as reported by the charger.")
+                    .withDescription("Duration of the active or most recent charging session, measured from charge start to cable disconnect.")
                     .withUnit("s")
                     .withHomeAssistant({deviceClass: "duration"}),
+            ],
+            configure: [
+                m.setupConfigureForReporting<"haApplianceControl", FuturehomeHaApplianceControl>("haApplianceControl", "energyMeterStart", {
+                    config: {min: "1_MINUTE", max: "1_HOUR", change: 1},
+                    access: ea.STATE,
+                }),
+                m.setupConfigureForReporting<"haApplianceControl", FuturehomeHaApplianceControl>("haApplianceControl", "energyMeterNow", {
+                    config: {min: "5_SECONDS", max: "1_HOUR", change: 1},
+                    access: ea.STATE,
+                }),
+                m.setupConfigureForReporting<"haApplianceControl", FuturehomeHaApplianceControl>("haApplianceControl", "chargingSessionStartTime", {
+                    config: {min: "1_MINUTE", max: "1_HOUR", change: 1},
+                    access: ea.STATE,
+                }),
+                m.setupConfigureForReporting<"haApplianceControl", FuturehomeHaApplianceControl>("haApplianceControl", "chargingSessionEndTime", {
+                    config: {min: "5_SECONDS", max: "1_HOUR", change: 1},
+                    access: ea.STATE,
+                }),
             ],
         };
     },
@@ -544,14 +580,14 @@ export const definitions: DefinitionWithExtend[] = [
                 ID: Zcl.Clusters.haApplianceControl.ID,
                 attributes: {
                     //     ID: 0xef00,
-                    chargingSessionStartT: {
-                        name: "chargingSessionStartT",
+                    chargingSessionStartTime: {
+                        name: "chargingSessionStartTime",
                         ID: 0xef01,
                         type: Zcl.DataType.UINT32,
                         manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS,
                     },
-                    chargingSessionEndT: {
-                        name: "chargingSessionEndT",
+                    chargingSessionEndTime: {
+                        name: "chargingSessionEndTime",
                         ID: 0xef02,
                         type: Zcl.DataType.UINT32,
                         manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS,
@@ -618,17 +654,29 @@ export const definitions: DefinitionWithExtend[] = [
                 // homeassistant: {icon: "mdi:target"},
                 zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
             }),
-            futurehomeExtend.chargerSessionTimings(),
+            m.binary<"haApplianceControl", FuturehomeHaApplianceControl>({
+                name: "auto_charge",
+                cluster: "haApplianceControl",
+                attribute: "autoCharge",
+                description: "Automatically start charging when a car is connected.",
+                valueOff: ["OFF", 0],
+                valueOn: ["ON", 1],
+                entityCategory: "config",
+                // homeassistant: {icon: "mdi:flash-auto"},
+                zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+            }),
             m.binary({
                 name: "cable_locked",
+                label: "Cable locked when not charging",
                 cluster: "closuresDoorLock",
                 attribute: "operatingMode",
                 valueOff: ["UNLOCK", 0x00],
                 valueOn: ["LOCK", 0x02],
                 description: "Permanently lock cable when not charging.",
-                // homeassistant: {icon: "mdi:lock"},
+                // homeassistant: {icon: "mdi:ev-plug-type2"},
                 zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
             }),
+            futurehomeExtend.forceUnlock(),
             m.numeric({
                 name: "charging_current_limit",
                 cluster: "genAnalogOutput",
@@ -639,16 +687,6 @@ export const definitions: DefinitionWithExtend[] = [
                 valueMin: 6,
                 valueMax: 32,
                 valueStep: 1,
-                entityCategory: "config",
-                zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
-            }),
-            m.binary<"haApplianceControl", FuturehomeHaApplianceControl>({
-                name: "auto_charge",
-                cluster: "haApplianceControl",
-                attribute: "autoCharge",
-                description: "Automatically start charging when a car is connected.",
-                valueOff: ["OFF", 0],
-                valueOn: ["ON", 1],
                 entityCategory: "config",
                 zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
             }),
@@ -667,28 +705,7 @@ export const definitions: DefinitionWithExtend[] = [
                 power: false,
                 threePhase: true,
             }),
-            m.numeric<"haApplianceControl", FuturehomeHaApplianceControl>({
-                name: "energy_meter_start",
-                cluster: "haApplianceControl",
-                attribute: "energyMeterStart",
-                description: "energyMeterStart",
-                unit: "kWh",
-                access: "STATE",
-                scale: 1000,
-                reporting: {min: 5, max: "1_HOUR", change: 1},
-                zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
-            }),
-            m.numeric<"haApplianceControl", FuturehomeHaApplianceControl>({
-                name: "energy_meter_now",
-                cluster: "haApplianceControl",
-                attribute: "energyMeterNow",
-                description: "energyMeterNow",
-                unit: "kWh",
-                access: "STATE",
-                scale: 1000,
-                reporting: {min: 5, max: "1_HOUR", change: 1},
-                zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
-            }),
+            futurehomeExtend.chargerSessionTimings(),
             ...futurehomeExtend.chargerExtraAttr(),
         ],
     },
