@@ -629,7 +629,7 @@ export const definitions: DefinitionWithExtend[] = [
                 valueMax: 32,
                 valueStep: 1,
                 reporting: {min: "10_SECONDS", max: "1_HOUR", change: 1},
-                // homeassistant: {icon: "mdi:target"},
+                homeassistant: {icon: "mdi:target"},
                 zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
             }),
             m.binary<"haApplianceControl", FuturehomeHaApplianceControl>({
@@ -640,7 +640,7 @@ export const definitions: DefinitionWithExtend[] = [
                 valueOff: ["OFF", 0],
                 valueOn: ["ON", 1],
                 entityCategory: "config",
-                // homeassistant: {icon: "mdi:flash-auto"},
+                homeassistant: {icon: "mdi:flash-auto"},
                 zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
             }),
             m.binary({
@@ -651,7 +651,7 @@ export const definitions: DefinitionWithExtend[] = [
                 valueOff: ["UNLOCK", 0x00],
                 valueOn: ["LOCK", 0x02],
                 description: "Permanently lock cable when not charging.",
-                // homeassistant: {icon: "mdi:ev-plug-type2"},
+                homeassistant: {icon: "mdi:ev-plug-type2"},
                 zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
             }),
             futurehomeExtend.forceUnlock(),
