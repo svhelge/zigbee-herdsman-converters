@@ -595,7 +595,6 @@ export const definitions: DefinitionWithExtend[] = [
                 name: "haApplianceControl",
                 ID: Zcl.Clusters.haApplianceControl.ID,
                 attributes: {
-                    //     ID: 0xef00,
                     chargingSessionStartTime: {
                         name: "chargingSessionStartTime",
                         ID: 0xef01,
@@ -652,7 +651,7 @@ export const definitions: DefinitionWithExtend[] = [
                     stopped: 0x05,
                 },
                 access: "STATE_GET",
-                reporting: {min: 5, max: "1_HOUR", change: 1},
+                reporting: {min: "5_SECONDS", max: "1_HOUR", change: 1},
                 zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
             }),
             futurehomeExtend.chargingCommand(),
