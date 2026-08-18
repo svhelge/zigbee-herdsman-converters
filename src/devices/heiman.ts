@@ -83,10 +83,12 @@ interface HeimanPrivateCluster {
         occupanyControlOnOffIlluminanceThreshold: number;
         radarDetectionMinRange: number;
         radarDetectionMaxRange: number;
+        shieldingSensorDetection: number;
         dewPoint: number;
         vpd: number;
         thi: number;
         heatIndex: number;
+        soundVolume: number;
 
         // Light/Switch 0x1000~0x1FFF
         indicatorLightControl: number;
@@ -506,10 +508,12 @@ const heimanExtend = {
                 radarDetectionTargetRange: {name: "radarDetectionTargetRange", ID: 0x0029, type: Zcl.DataType.UINT16},
                 radarDetectionMinRange: {name: "radarDetectionMinRange", ID: 0x002b, type: Zcl.DataType.UINT16, write: true},
                 radarDetectionMaxRange: {name: "radarDetectionMaxRange", ID: 0x002c, type: Zcl.DataType.UINT16, write: true},
+                shieldingSensorDetection: {name: "shieldingSensorDetection", ID: 0x002d, type: Zcl.DataType.UINT16, write: true},
                 dewPoint: {name: "dewPoint", ID: 0x0033, type: Zcl.DataType.INT16},
                 vpd: {name: "vpd", ID: 0x0034, type: Zcl.DataType.UINT16},
                 thi: {name: "thi", ID: 0x0035, type: Zcl.DataType.UINT16},
                 heatIndex: {name: "heatIndex", ID: 0x0036, type: Zcl.DataType.INT16},
+                soundVolume: {name: "soundVolume", ID: 0x0047, type: Zcl.DataType.UINT8, write: true},
 
                 // Light/Switch 0x1000~0x1FFF
                 indicatorLightControl: {name: "indicatorLightControl", ID: 0x1000, type: Zcl.DataType.BITMAP8, write: true},
@@ -1741,6 +1745,18 @@ const heimanExtend = {
             access: "ALL",
             ...args,
         }),
+    shieldingSensorDetection: (args?: Partial<m.NumericArgs<"heimanClusterSpecial", HeimanPrivateCluster>>) =>
+        m.numeric<"heimanClusterSpecial", HeimanPrivateCluster>({
+            name: "shielding_sensor_detection",
+            unit: "min",
+            valueMin: 1,
+            valueMax: 20,
+            cluster: "heimanClusterSpecial",
+            attribute: "shieldingSensorDetection",
+            description: "Duration of shielding sensor detection",
+            access: "ALL",
+            ...args,
+        }),
     smokeConcentrationLevel: (args?: Partial<m.NumericArgs<"heimanClusterSpecial", HeimanPrivateCluster>>) =>
         m.numeric<"heimanClusterSpecial", HeimanPrivateCluster>({
             name: "smoke_level",
@@ -1907,6 +1923,17 @@ const heimanExtend = {
             cluster: "heimanClusterSpecial",
             attribute: "lightPixelCount",
             description: "Number of light pixels",
+            access: "ALL",
+            ...args,
+        }),
+    soundVolume: (args?: Partial<m.NumericArgs<"heimanClusterSpecial", HeimanPrivateCluster>>) =>
+        m.numeric<"heimanClusterSpecial", HeimanPrivateCluster>({
+            name: "sound_volume",
+            valueMin: 0,
+            valueMax: 100,
+            cluster: "heimanClusterSpecial",
+            attribute: "soundVolume",
+            description: "Sound volume",
             access: "ALL",
             ...args,
         }),
@@ -3713,6 +3740,7 @@ export const definitions: DefinitionWithExtend[] = [
                     "reportedPackages",
                     "humidityOffset",
                     "temperatureOffset",
+                    "shieldingSensorDetection",
                 ],
                 {
                     manufacturerCode: Zcl.ManufacturerCode.HEIMAN_TECHNOLOGY_CO_LTD,
@@ -3747,6 +3775,7 @@ export const definitions: DefinitionWithExtend[] = [
             heimanExtend.smokeChamberContaminationLevel(),
             heimanExtend.linkAvailable(),
             heimanExtend.sirenForAutomationOnly(),
+            heimanExtend.shieldingSensorDetection(),
             heimanExtend.temperatureOffset(),
             heimanExtend.humidityOffset(),
             heimanExtend.reportedPackages(),
@@ -4345,6 +4374,7 @@ export const definitions: DefinitionWithExtend[] = [
                 "heimanClusterSpecial",
                 [
                     "indicatorLightLevelControlOf1",
+                    "sensorSensitivityLevel",
                     "rebootedCount",
                     "rejoinedCount",
                     "reportedPackages",
@@ -4370,6 +4400,14 @@ export const definitions: DefinitionWithExtend[] = [
             m.iasZoneAlarm({zoneType: "contact", zoneAttributes: ["alarm_1", "alarm_2", "battery_low"]}),
             heimanExtend.heimanClusterSpecial(),
             heimanExtend.heimanClusterIndicatorLight(),
+            m.enumLookup<"heimanClusterSpecial", HeimanPrivateCluster>({
+                name: "sensitivity_level",
+                lookup: {low: 0, medium: 1, high: 2},
+                cluster: "heimanClusterSpecial",
+                attribute: "sensorSensitivityLevel",
+                description: "The sensitivity of Sensor",
+                access: "ALL",
+            }),
             heimanExtend.temperatureOffset(),
             heimanExtend.humidityOffset(),
             heimanExtend.dewPoint(),
@@ -4520,6 +4558,7 @@ export const definitions: DefinitionWithExtend[] = [
                     "lightOptions",
                     "lightEffectCount",
                     "lightPixelCount",
+                    "soundVolume",
                 ],
                 {
                     manufacturerCode: Zcl.ManufacturerCode.HEIMAN_TECHNOLOGY_CO_LTD,
@@ -4541,6 +4580,7 @@ export const definitions: DefinitionWithExtend[] = [
             heimanExtend.lightOptions(),
             heimanExtend.lightEffectCount(),
             heimanExtend.lightPixelCount(),
+            heimanExtend.soundVolume(),
             heimanExtend.language(),
             heimanExtend.room(),
             heimanExtend.floor(),
