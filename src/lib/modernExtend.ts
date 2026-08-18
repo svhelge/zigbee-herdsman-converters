@@ -552,8 +552,13 @@ export function deviceTemperature(args: Partial<NumericArgs<"genDeviceTempCfg">>
     });
 }
 
-export function identify(args: {isSleepy: boolean} = {isSleepy: false}): ModernExtend {
-    const {isSleepy} = args;
+export interface IdentifyArgs {
+    isSleepy?: boolean;
+    endpointNames?: string[];
+}
+
+export function identify(args: IdentifyArgs = {}): ModernExtend {
+    const {isSleepy = false, endpointNames = undefined} = args;
     const normal: Expose = e.enum("identify", ea.SET, ["identify"]).withDescription("Initiate device identification").withCategory("config");
     const sleepy: Expose = e
         .enum("identify", ea.SET, ["identify"])
@@ -563,7 +568,8 @@ export function identify(args: {isSleepy: boolean} = {isSleepy: false}): ModernE
         )
         .withCategory("config");
 
-    const exposes: Expose[] = isSleepy ? [sleepy] : [normal];
+    const identifyExpose = isSleepy ? sleepy : normal;
+    const exposes: Expose[] = exposeEndpoints(identifyExpose, endpointNames);
 
     const identifyTimeout = e
         .numeric("identify_timeout", ea.SET)
@@ -574,16 +580,16 @@ export function identify(args: {isSleepy: boolean} = {isSleepy: false}): ModernE
         .withValueMin(1)
         .withValueMax(30);
 
-    const toZigbee: Tz.Converter[] = [
-        {
-            key: ["identify"],
-            options: [identifyTimeout],
-            convertSet: async (entity, key, value, meta) => {
-                const identifyTimeout = (meta.options.identify_timeout as number) ?? 3;
-                await entity.command("genIdentify", "identify", {identifytime: identifyTimeout}, getOptions(meta.mapped, entity));
-            },
+    const baseConverter: Tz.Converter = {
+        key: ["identify"],
+        options: [identifyTimeout],
+        convertSet: async (entity, key, value, meta) => {
+            const identifyTimeout = (meta.options.identify_timeout as number) ?? 3;
+            await entity.command("genIdentify", "identify", {identifytime: identifyTimeout}, getOptions(meta.mapped, entity));
         },
-    ];
+    };
+
+    const toZigbee: Tz.Converter[] = [endpointNames ? {...baseConverter, endpoints: endpointNames} : baseConverter];
 
     return {exposes, toZigbee, isModernExtend: true};
 }
@@ -982,10 +988,7 @@ export function occupancy(args: OccupancyArgs = {}): ModernExtend {
         endpointNames = undefined,
     } = args;
 
-    const templateExposes: Expose[] = [e.occupancy().withAccess(ea.STATE_GET)];
-    const exposes: (Expose | DefinitionExposesFunction)[] = endpointNames
-        ? templateExposes.flatMap((exp) => endpointNames.map((ep) => exp.withEndpoint(ep)))
-        : templateExposes;
+    const exposes: (Expose | DefinitionExposesFunction)[] = exposeEndpoints(e.occupancy().withAccess(ea.STATE_GET), endpointNames);
 
     const fromZigbee: Fz.Converter<"msOccupancySensing">[] = [
         {
@@ -994,7 +997,7 @@ export function occupancy(args: OccupancyArgs = {}): ModernExtend {
             options: [opt.no_occupancy_since_false()],
             convert: (model, msg, publish, options, meta) => {
                 if ("occupancy" in msg.data && (!endpointNames || endpointNames.includes(getEndpointName(msg, model, meta).toString()))) {
-                    const propertyName = postfixWithEndpointName("occupancy", msg, model, meta);
+                    const propertyName = endpointNames ? postfixWithEndpointName("occupancy", msg, model, meta) : "occupancy";
                     const payload = {[propertyName]: (msg.data.occupancy & 1) > 0};
                     noOccupancySince(msg.endpoint, options, publish, payload[propertyName] ? "stop" : "start");
                     return payload;
