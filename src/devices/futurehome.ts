@@ -717,6 +717,7 @@ export const definitions: DefinitionWithExtend[] = [
             }),
             m.electricityMeter({
                 energy: {divisor: 1000, multiplier: 1, min: "1_MINUTE", change: 1},
+                voltage: {min: "1_MINUTE", change: 1},
                 power: false,
                 threePhase: true,
             }),
