@@ -196,6 +196,13 @@ export const definitions: DefinitionWithExtend[] = [
         ],
     },
     {
+        zigbeeModel: ["lumi.curtain.acn011"],
+        model: "ZNMHLDJ01LM",
+        vendor: "Aqara",
+        description: "Smart vertical blinds motor H1",
+        extend: [m.identify(), m.windowCovering({controls: ["lift", "tilt"], coverInverted: true})],
+    },
+    {
         zigbeeModel: ["lumi.flood.acn001"],
         model: "SJCGQ13LM",
         vendor: "Aqara",
@@ -2086,6 +2093,13 @@ export const definitions: DefinitionWithExtend[] = [
         toZigbee: [],
         exposes: [e.battery(), e.battery_voltage(), e.device_temperature(), e.power_outage_count(false), e.trigger_count()],
         extend: [m.quirkCheckinInterval("1_HOUR"), m.iasZoneAlarm({zoneType: "water_leak", zoneAttributes: ["alarm_1", "battery_low"]})],
+    },
+    {
+        zigbeeModel: ["lumi.flood.agl02\tF\x01"],
+        model: "SJCGQ12LM-ES",
+        vendor: "Aqara",
+        description: "Water leak sensor T1 engineering test version (no specific battery percentage support, not compatible with Aqara Home app)",
+        extend: [m.iasZoneAlarm({zoneType: "water_leak", zoneAttributes: ["alarm_1", "battery_low"]})],
     },
     {
         zigbeeModel: ["lumi.flood.agl02"],
