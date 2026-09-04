@@ -6358,6 +6358,7 @@ export const definitions: DefinitionWithExtend[] = [
             "_TZE204_gxbdnfrh",
             "_TZE284_g1enhdsi",
             "_TZE284_r731zlxk",
+            "_TZE284_znkkcauq",
         ]),
         model: "TS0601_switch_6_gang",
         vendor: "Tuya",
@@ -6418,6 +6419,7 @@ export const definitions: DefinitionWithExtend[] = [
             tuya.whitelabel("Nova Digital", "FZB-6", "6 gang switch 4x4", ["_TZE204_wskr3up8"]),
             tuya.whitelabel("Nova Digital", "SA-6", "Safira smart switch - 6 gang", ["_TZE204_gxbdnfrh"]),
             tuya.whitelabel("Ekaza", "EKAT-T3074-6WZ", "6 gang switch", ["_TZE284_g1enhdsi"]),
+            tuya.whitelabel("Ekaza", "EKGD-T4085P-4Z", "4 gang switch with 2 gang socket 4x4", ["_TZE284_znkkcauq"]),
         ],
     },
     {
@@ -17076,6 +17078,7 @@ export const definitions: DefinitionWithExtend[] = [
             "_TZ3000_zjchz7pd",
             "_TZ3000_zv6x8bt2",
             "_TZ3000_yi0n4xfd",
+            "_TZ3000_3o7r0mno",
         ]),
         model: "TS011F_with_threshold",
         description: "Din rail switch with power monitoring and threshold settings",
@@ -17176,6 +17179,7 @@ export const definitions: DefinitionWithExtend[] = [
             tuya.whitelabel("Tomzn", "TOB9Z-VAP", "Smart circuit breaker", ["_TZ3000_303avxxt", "_TZ3000_ibefeicf"]),
             tuya.whitelabel("Immax", "07573L", "Smart circuit breaker", ["_TZ3000_zjchz7pd"]),
             tuya.whitelabel("Moes", "A5", "Smart circuit breaker", ["_TZ3000_zv6x8bt2"]),
+            tuya.whitelabel("Nova Digital", "MS-63A", "Smart circuit breaker", ["_TZ3000_3o7r0mno"]),
         ],
     },
     {
