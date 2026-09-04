@@ -1702,30 +1702,19 @@ export const valueConverter = {
         },
     },
     phaseVariant2WithPhase: (phase: string) => {
-        // Payload is 8 bytes: voltage (2), current (3), power (3), same layout as
-        // phaseVariant3/phaseVariant4. Reading only the low 2 bytes of current and
-        // power made the current wrap above 65.536 A.
-        //
-        // Support negative power readings
-        // https://github.com/Koenkk/zigbee2mqtt/issues/18603#issuecomment-2277697295
-        // Negative values are not two's complement: they are reported as
-        // NEGATIVE_POWER_OFFSET + power, so the sign bit cannot be used and the
-        // branch is taken on an implausibly high reading instead. The 0x999a
-        // constant previously used here is the low 16 bits of this offset, i.e. an
-        // artifact of the same truncation.
-        const NEGATIVE_POWER_OFFSET = 0x19999a;
-        const IMPLAUSIBLE_POWER = 0x100000; // 1048576 W on a single phase
         return {
             from: (v: string) => {
+                // Support negative power readings
+                // https://github.com/Koenkk/zigbee2mqtt/issues/18603#issuecomment-2277697295
                 const buf = Buffer.from(v, "base64");
-                let power = buf[7] | (buf[6] << 8) | (buf[5] << 16);
-                if (power > IMPLAUSIBLE_POWER) {
-                    power -= NEGATIVE_POWER_OFFSET;
+                let power = buf[7] | (buf[6] << 8);
+                if (power > 0x7fff) {
+                    power = (0x999a - power) * -1;
                 }
 
                 return {
                     [`voltage_${phase}`]: (buf[1] | (buf[0] << 8)) / 10,
-                    [`current_${phase}`]: (buf[4] | (buf[3] << 8) | (buf[2] << 16)) / 1000,
+                    [`current_${phase}`]: (buf[4] | (buf[3] << 8)) / 1000,
                     [`power_${phase}`]: power,
                 };
             },
@@ -4970,23 +4959,33 @@ const tuyaModernExtend = {
         } else {
             toZigbee.push(tz.on_off);
         }
-        if (powerOutageMemory) {
-            // Legacy, powerOnBehavior is preferred
-            fromZigbee.push(tuyaFz.power_outage_memory);
-            toZigbee.push(tuyaTz.power_on_behavior_1);
-            if (typeof powerOutageMemory === "function") {
-                exposes.push((d) => (powerOutageMemory(d.manufacturerName) ? [tuyaExposes.powerOutageMemory()] : []));
-            } else {
-                exposes.push(tuyaExposes.powerOutageMemory());
+        if (powerOutageMemory || powerOnBehavior2) {
+            // `powerOutageMemory` and `powerOnBehavior2` can both be set, as complementary per-manufacturer
+            // predicates, when one definition covers devices that use either mechanism. The manufacturer is
+            // only known once the exposes are resolved, so both converter sets are registered here and the
+            // lazy exposes decide which key is reachable for a given device. Selecting a branch on the
+            // option itself would always pick the first, since a predicate is truthy regardless of outcome.
+            if (powerOnBehavior2) {
+                // Registered before `power_on_behavior_1` below: both handle the `power_on_behavior` key
+                // and the first match wins, so this must take precedence for the devices that expose it.
+                fromZigbee.push(tuyaFz.power_on_behavior_2);
+                toZigbee.push(tuyaTz.power_on_behavior_2);
+                const expose = args.endpoints ? args.endpoints.map((ee) => e.power_on_behavior().withEndpoint(ee)) : [e.power_on_behavior()];
+                if (typeof powerOnBehavior2 === "function") {
+                    exposes.push((d) => (powerOnBehavior2(d.manufacturerName) ? expose : []));
+                } else {
+                    exposes.push(...expose);
+                }
             }
-        } else if (powerOnBehavior2) {
-            fromZigbee.push(tuyaFz.power_on_behavior_2);
-            toZigbee.push(tuyaTz.power_on_behavior_2);
-            const expose = args.endpoints ? args.endpoints.map((ee) => e.power_on_behavior().withEndpoint(ee)) : [e.power_on_behavior()];
-            if (typeof powerOnBehavior2 === "function") {
-                exposes.push((d) => (powerOnBehavior2(d.manufacturerName) ? expose : []));
-            } else {
-                exposes.push(...expose);
+            if (powerOutageMemory) {
+                // Legacy, powerOnBehavior is preferred
+                fromZigbee.push(tuyaFz.power_outage_memory);
+                toZigbee.push(tuyaTz.power_on_behavior_1);
+                if (typeof powerOutageMemory === "function") {
+                    exposes.push((d) => (powerOutageMemory(d.manufacturerName) ? [tuyaExposes.powerOutageMemory()] : []));
+                } else {
+                    exposes.push(tuyaExposes.powerOutageMemory());
+                }
             }
         } else if (powerOnBehavior3) {
             const endpointList = args.endpoints || [];
@@ -5226,7 +5225,7 @@ const tuyaModernExtend = {
 
         const tz_fileds = includeCurrentWeather ? ["temperature_0", "humidity_0", "condition_0"] : [];
 
-        for (let i = 0; i < numberOfForecastDays; ++i) {
+        for (let i = 1; i <= numberOfForecastDays; ++i) {
             tz_fileds.push(`temperature_${i}`);
             tz_fileds.push(`humidity_${i}`);
             tz_fileds.push(`condition_${i}`);
@@ -5268,7 +5267,7 @@ const tuyaModernExtend = {
                 weather_values[TuyaWeatherID.Temperature].push(
                     `temperature_${i}` in meta.state ? (_vCorr(meta.state[`temperature_${i}`] as number) as number) : 0,
                 );
-                weather_values[TuyaWeatherID.Humidity].push(`humidity_${i}` in meta.state ? (meta.state[`humidity${i}`] as number) : 0);
+                weather_values[TuyaWeatherID.Humidity].push(`humidity_${i}` in meta.state ? (meta.state[`humidity_${i}`] as number) : 0);
                 weather_values[TuyaWeatherID.Condition].push(
                     `condition_${i}` in meta.state ? weatherConditionMap[meta.state[`condition_${i}`] as keyof typeof weatherConditionMap] : 0,
                 );

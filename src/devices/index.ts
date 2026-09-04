@@ -125,6 +125,7 @@ import {definitions as handshakeFinland} from "./handshake_finland";
 import {definitions as heatit} from "./heatit";
 import {definitions as heiman} from "./heiman";
 import {definitions as heimgardTechnologies} from "./heimgard_technologies";
+import {definitions as heiwa} from "./heiwa";
 import {definitions as hej} from "./hej";
 import {definitions as hfh} from "./hfh";
 import {definitions as hilux} from "./hilux";
@@ -186,6 +187,7 @@ import {definitions as lincukoo} from "./lincukoo";
 import {definitions as linkind} from "./linkind";
 import {definitions as linknlink} from "./linknlink";
 import {definitions as linptech} from "./linptech";
+import {definitions as linxura} from "./linxura";
 import {definitions as livingwise} from "./livingwise";
 import {definitions as livolo} from "./livolo";
 import {definitions as lixee} from "./lixee";
@@ -211,6 +213,7 @@ import {definitions as mill} from "./mill";
 import {definitions as mindy} from "./mindy";
 import {definitions as modular} from "./modular";
 import {definitions as moes} from "./moes";
+import {definitions as mowe} from "./mowe";
 import {definitions as msh} from "./msh";
 import {definitions as mullerLicht} from "./muller_licht";
 import {definitions as multir} from "./multir";
@@ -284,6 +287,7 @@ import {definitions as schneiderElectric} from "./schneider_electric";
 import {definitions as schwaiger} from "./schwaiger";
 import {definitions as seastarIntelligence} from "./seastar_intelligence";
 import {definitions as securifi} from "./securifi";
+import {definitions as selena} from "./selena";
 import {definitions as sengled} from "./sengled";
 import {definitions as senoro} from "./senoro";
 import {definitions as sercomm} from "./sercomm";
@@ -293,6 +297,7 @@ import {definitions as shelly} from "./shelly";
 import {definitions as shenzhenHoma} from "./shenzhen_homa";
 import {definitions as shinasystem} from "./shinasystem";
 import {definitions as shyugj} from "./shyugj";
+import {definitions as siemens} from "./siemens";
 import {definitions as siglis} from "./siglis";
 import {definitions as sikom} from "./sikom";
 import {definitions as siliconLabs} from "./silicon_labs";
@@ -510,6 +515,7 @@ const definitions: DefinitionWithExtend[] = [
     ...heatit,
     ...heiman,
     ...heimgardTechnologies,
+    ...heiwa,
     ...hej,
     ...hfh,
     ...hilux,
@@ -571,6 +577,7 @@ const definitions: DefinitionWithExtend[] = [
     ...linkind,
     ...linknlink,
     ...linptech,
+    ...linxura,
     ...livingwise,
     ...livolo,
     ...lixee,
@@ -594,6 +601,7 @@ const definitions: DefinitionWithExtend[] = [
     ...mindy,
     ...modular,
     ...moes,
+    ...mowe,
     ...msh,
     ...mullerLicht,
     ...multir,
@@ -667,6 +675,7 @@ const definitions: DefinitionWithExtend[] = [
     ...schwaiger,
     ...seastarIntelligence,
     ...securifi,
+    ...selena,
     ...sengled,
     ...senoro,
     ...sercomm,
@@ -676,6 +685,7 @@ const definitions: DefinitionWithExtend[] = [
     ...shenzhenHoma,
     ...shinasystem,
     ...shyugj,
+    ...siemens,
     ...siglis,
     ...siliconLabs,
     ...sikom,
