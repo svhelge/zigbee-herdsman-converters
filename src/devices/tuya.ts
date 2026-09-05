@@ -3609,7 +3609,12 @@ export const definitions: DefinitionWithExtend[] = [
         extend: [
             tuya.modernExtend.tuyaBase({
                 dp: true,
-                queryOnDeviceAnnounce: true,
+                // ONENUO TH05Z (_TZE2841000000_qf5mzewi) appears to re-announce
+                // often; querying its full state on every announce caused
+                // excessive traffic and fast battery drain on that unit, with
+                // no evidence it's actually needed there. Other manufacturerNames
+                // keep the original always-on behavior.
+                queryOnDeviceAnnounce: (device) => device.manufacturerName !== "_TZE2841000000_qf5mzewi",
                 queryOnConfigure: true,
                 timeStart: "1970",
             }),
@@ -11436,17 +11441,18 @@ export const definitions: DefinitionWithExtend[] = [
         exposes: [
             e.binary("state", ea.STATE_SET, "ON", "OFF").withDescription("Turn the thermostat ON/OFF"),
             e.child_lock(),
-            e.binary("system_mode", ea.STATE_SET, "Auto", "Manual").withDescription("Manual = Manual or Schedule = Auto"),
+            e.binary("schedule_mode", ea.STATE_SET, "auto", "manual").withDescription("Manual = Manual or Schedule = Auto"),
             e.eco_mode(),
             e.temperature_sensor_select(["IN", "AL", "OU"]).withLabel("Sensor").withDescription("Choose which sensor to use. Default: AL"),
-            e.enum("valve_state", ea.STATE, ["close", "open"]).withDescription("State of the valve"),
             e.min_temperature().withValueMin(0).withValueMax(20),
             e.max_temperature().withValueMin(20).withValueMax(50),
             e
                 .climate()
                 .withLocalTemperature(ea.STATE)
                 .withSetpoint("current_heating_setpoint", 0, 50, 1, ea.STATE_SET)
-                .withLocalTemperatureCalibration(-9, 9, 1, ea.STATE_SET),
+                .withLocalTemperatureCalibration(-9, 9, 1, ea.STATE_SET)
+                .withSystemMode(["off", "heat"], ea.STATE_SET)
+                .withRunningState(["idle", "heat"], ea.STATE),
             e
                 .numeric("max_temperature_limit", ea.STATE_SET)
                 .withDescription("Max temperature limit")
@@ -11462,26 +11468,29 @@ export const definitions: DefinitionWithExtend[] = [
                 .withDescription("The difference between local temp and set temp that triggers heating"),
             (() => {
                 const groups = [
-                    {name: "W", start: 0},
-                    {name: "S", start: 16},
-                    {name: "U", start: 32},
+                    {name: "Weekdays", full: "Weekdays (Monday-Friday)", start: 0},
+                    {name: "Saturday", full: "Saturday", start: 16},
+                    {name: "Sunday", full: "Sunday", start: 32},
                 ];
                 let composite = e
                     .composite("programming_mode", "programming_mode", ea.STATE_SET)
-                    .withDescription("Schedule: W=Weekdays, S=Saturday, U=Sunday. 4 slots each with hour(h), minute(m), temperature(t).");
+                    .withDescription("Schedule: Weekdays, Saturday and Sunday. 4 slots each with hour(h), minute(m), temperature(t).");
                 for (const group of groups) {
                     for (let slot = 0; slot < 4; slot++) {
                         const offset = group.start + slot * 4;
-                        const label = `${group.name}${slot + 1}`;
                         composite = composite.withFeature(
-                            e.numeric(offset.toString(), ea.STATE_SET).withValueMin(0).withValueMax(23).withDescription(`${label}h`),
+                            e
+                                .numeric(offset.toString(), ea.STATE_SET)
+                                .withValueMin(0)
+                                .withValueMax(23)
+                                .withDescription(`${group.full}, slot ${slot + 1} - Hour`),
                         );
                         composite = composite.withFeature(
                             e
                                 .numeric((offset + 1).toString(), ea.STATE_SET)
                                 .withValueMin(0)
                                 .withValueMax(59)
-                                .withDescription(`${label}m`),
+                                .withDescription(`${group.full}, slot ${slot + 1} - Minute`),
                         );
                         composite = composite.withFeature(
                             e
@@ -11489,7 +11498,7 @@ export const definitions: DefinitionWithExtend[] = [
                                 .withValueMin(5)
                                 .withValueMax(45)
                                 .withUnit("°C")
-                                .withDescription(`${label}t`),
+                                .withDescription(`${group.full}, slot ${slot + 1} - Temperature`),
                         );
                     }
                 }
@@ -11499,6 +11508,7 @@ export const definitions: DefinitionWithExtend[] = [
         meta: {
             tuyaDatapoints: [
                 [1, "state", tuya.valueConverter.onOff],
+                [1, "system_mode", tuya.valueConverterBasic.lookup({off: false, heat: true})],
                 [
                     2,
                     "system_mode",
@@ -11522,14 +11532,7 @@ export const definitions: DefinitionWithExtend[] = [
                 [34, "max_temperature", tuya.valueConverter.raw],
                 [39, "child_lock", tuya.valueConverter.lockUnlock],
                 [40, "eco_mode", tuya.valueConverter.onOff],
-                [
-                    47,
-                    "valve_state",
-                    tuya.valueConverterBasic.lookup({
-                        closed: tuya.enum(0),
-                        open: tuya.enum(1),
-                    }),
-                ],
+                [47, "running_state", tuya.valueConverterBasic.lookup({idle: tuya.enum(0), heat: tuya.enum(1)})],
                 [50, "current_heating_setpoint", tuya.valueConverter.raw],
                 [68, "programming_mode", zht002ProgrammingModeConverter],
                 [101, "max_temperature_limit", tuya.valueConverter.raw],
@@ -12221,7 +12224,7 @@ export const definitions: DefinitionWithExtend[] = [
         },
     },
     {
-        fingerprint: tuya.fingerprint("TS0601", ["_TZE284_6ycgarab", "_TZE284_aoah6bv8"]),
+        fingerprint: tuya.fingerprint("TS0601", ["_TZE284_6ycgarab", "_TZE284_aoah6bv8", "_TZE2841000000_6ycgarab"]),
         model: "TS0601_smoke_co",
         vendor: "Tuya",
         description: "Dual smoke CO sensor",
@@ -17047,13 +17050,16 @@ export const definitions: DefinitionWithExtend[] = [
         model: "TS0224",
         vendor: "Tuya",
         description: "Smart light & sound siren",
-        fromZigbee: [],
-        toZigbee: [tz.warning, tzLocal.TS0224],
-        extend: [m.iasWarningMaxDuration()],
-        exposes: [
-            e.warning(),
-            e.binary("light", ea.STATE_SET, "ON", "OFF").withDescription("Turn the light of the alarm ON/OFF"),
-            e.enum("volume", ea.STATE_SET, ["mute", "low", "medium", "high"]).withDescription("Volume of the alarm"),
+        extend: [
+            m.iasWarning(),
+            {
+                exposes: [
+                    e.binary("light", ea.STATE_SET, "ON", "OFF").withDescription("Turn the light of the alarm ON/OFF"),
+                    e.enum("volume", ea.STATE_SET, ["mute", "low", "medium", "high"]).withDescription("Volume of the alarm"),
+                ],
+                toZigbee: [tzLocal.TS0224],
+                isModernExtend: true,
+            },
         ],
     },
     {
