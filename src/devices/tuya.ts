@@ -1401,6 +1401,8 @@ const tzLocal = {
     } satisfies Tz.Converter,
 };
 
+const ts130fPositionKey = "ts130f_position";
+
 const fzLocal = {
     // FUT035Z+ (_TZB210_ue01a0s2) reports RF color temperature changes
     // as raw lightingColorCtrl frames without updating colorTemperature.
@@ -2076,6 +2078,42 @@ const fzLocal = {
             return payload;
         },
     } satisfies Fz.Converter<"lightingColorCtrl", undefined, "raw">,
+    // The Nous B4Z reports the position it started the movement from instead of the position it
+    // reached when reporting `moving: STOP`, publish the last position reported while moving instead.
+    // https://github.com/Koenkk/zigbee-herdsman-converters/pull/12887
+    // biome-ignore lint/style/useNamingConvention: existing
+    TS130F_cover_position_tilt: {
+        ...fz.cover_position_tilt,
+        convert: (model, msg, publish, options, meta) => {
+            const result = fz.cover_position_tilt.convert(model, msg, publish, options, meta) as KeyValueAny | undefined;
+            const property = postfixWithEndpointName("position", msg, model, meta);
+            const position = result?.[property];
+            const moving = msg.data.tuyaMovingState;
+            if (meta.device.manufacturerName !== "_TZ3000_yruungrl" || moving === undefined || !utils.isNumber(position)) return result;
+
+            if (moving !== 1 /* STOP */) {
+                // Remember the position the movement started from and the position reported while moving.
+                const start = globalStore.getValue(msg.endpoint, ts130fPositionKey)?.start ?? meta.state[property];
+                globalStore.putValue(msg.endpoint, ts130fPositionKey, {start, position, raw: msg.data.currentPositionLiftPercentage});
+                return result;
+            }
+
+            const moved = globalStore.getValue(msg.endpoint, ts130fPositionKey);
+            globalStore.clearValue(msg.endpoint, ts130fPositionKey);
+            // Only correct when the reported position is exactly the one the movement started from,
+            // any other position is a legitimate (e.g. manual) stop.
+            if (moved !== undefined && position === moved.start && position !== moved.position) {
+                logger.debug(`Correcting stale position ${position} to ${moved.position}`, NS);
+                result[property] = moved.position;
+                result[postfixWithEndpointName("state", msg, model, meta)] = moved.position === 0 ? "CLOSE" : "OPEN";
+                // Also correct the position on the device itself, it keeps reporting the stale one otherwise.
+                msg.endpoint
+                    .write("closuresWindowCovering", {currentPositionLiftPercentage: moved.raw}, utils.getOptions(model, msg.endpoint))
+                    .catch((error) => logger.warning(`Failed to correct stale position: ${error}`, NS));
+            }
+            return result;
+        },
+    } satisfies Fz.Converter<"closuresWindowCovering", tuya.TuyaClosuresWindowCovering, ["attributeReport", "readResponse"]>,
 };
 
 // MS032Z stair light controller - DP 125, the six running-light effects.
@@ -4396,6 +4434,28 @@ export const definitions: DefinitionWithExtend[] = [
         ],
     },
     {
+        fingerprint: tuya.fingerprint("TS0505B", ["_TZ3210_cnicaghm"]),
+        model: "GKZ-LB431RGBCW-E26",
+        vendor: "Hejhome",
+        description: "Z26 RGB+CCT light bulb",
+        extend: [
+            tuya.modernExtend.tuyaLight({colorTemp: {range: [153, 500]}, color: true}),
+            // This firmware leaves the network after roughly 10 minutes without Basic-cluster keep-alive reads.
+            // GOQUAL documents the same workaround at https://homey.app/en-us/app/com.hejhome.iot/Hejhome/.
+            m.poll({
+                key: "hejhome_z26_app_version_keepalive",
+                defaultIntervalSeconds: 120,
+                poll: async (device) => {
+                    await device.getEndpoint(1).read("genBasic", ["appVersion"]);
+                },
+            }),
+        ],
+        meta: {applyRedFix: true},
+        configure: (device) => {
+            device.getEndpoint(1).saveClusterAttributeKeyValue("lightingColorCtrl", {colorCapabilities: 29});
+        },
+    },
+    {
         zigbeeModel: ["TS0505B"],
         model: "TS0505B_1",
         vendor: "Tuya",
@@ -5986,7 +6046,7 @@ export const definitions: DefinitionWithExtend[] = [
         vendor: "Tuya",
         description: "Curtain/blind switch",
         fromZigbee: [
-            fz.cover_position_tilt,
+            fzLocal.TS130F_cover_position_tilt,
             tuya.fz.indicator_mode,
             tuya.fz.cover_options,
             tuya.fz.backlight_mode_off_on,
@@ -11854,7 +11914,7 @@ export const definitions: DefinitionWithExtend[] = [
                 divisor: 100,
                 multiplier: 1,
             });
-            utils.attachOutputCluster(device, "genOta");
+            utils.attachOutputCluster(device, endpoint, "genOta");
             device.save();
         },
     },
@@ -11947,7 +12007,7 @@ export const definitions: DefinitionWithExtend[] = [
                 divisor: 100,
                 multiplier: 1,
             });
-            utils.attachOutputCluster(device, "genOta");
+            utils.attachOutputCluster(device, endpoint, "genOta");
             device.save();
         },
     },
@@ -14043,8 +14103,6 @@ export const definitions: DefinitionWithExtend[] = [
         model: "ZWT198/ZWT100-BH",
         vendor: "Tuya",
         description: "Wall thermostat",
-        // Don't enable mcuVersionResponse
-        // https://github.com/Koenkk/zigbee2mqtt/issues/28455#issuecomment-3603696676
         extend: [tuya.modernExtend.tuyaBase({dp: true, timeStart: "1970"})],
         whiteLabel: [tuya.whitelabel("AVATTO", "WT-100-BH", "Wall thermostat", ["_TZE204_gops3slb", "_TZE284_gops3slb"])],
         exposes: [
@@ -17051,7 +17109,7 @@ export const definitions: DefinitionWithExtend[] = [
         vendor: "Tuya",
         description: "Smart light & sound siren",
         extend: [
-            m.iasWarning(),
+            m.iasWarning({maxDuration: true}),
             {
                 exposes: [
                     e.binary("light", ea.STATE_SET, "ON", "OFF").withDescription("Turn the light of the alarm ON/OFF"),
@@ -21909,6 +21967,8 @@ export const definitions: DefinitionWithExtend[] = [
             "_TZE284_tzreobvu",
             "_TZE284_9xstqowh",
             "_TZE284_kv1nvirl",
+            "_TZE284_lyqazpe6",
+            "_TZE204_lyqazpe6",
         ]),
         model: "TOQCB2-80",
         vendor: "Tongou",
@@ -24528,6 +24588,7 @@ export const definitions: DefinitionWithExtend[] = [
         whiteLabel: [
             tuya.whitelabel("BSEED", "EC-GL86ZPCS11", "1 gang switch with scene and backlight", ["_TZ3002_jn2x20tg"]),
             tuya.whitelabel("BSEED", "EC-SL-FK86ZPCS11", "1 gang switch with scene and backlight (Neutral line optional)", ["_TZ3002_xkxgfxsg"]),
+            tuya.whitelabel("Mowe", "MW781Z", "1 gang switch with scene and backlight", ["_TZ300A_rncj86af"]),
         ],
         fromZigbee: [fzLocal.TS0726_action],
         exposes: [e.action(["scene_1"])],
@@ -24539,7 +24600,9 @@ export const definitions: DefinitionWithExtend[] = [
                 backlightModeOffOn: true,
                 indicatorModeNoneRelayPos: true,
                 onOffCountdown: true,
+                inchingSwitch: (m) => m === "_TZ300A_rncj86af",
             }),
+            tuya.clusters.addTuyaCommonPrivateCluster(),
         ],
         configure: async (device, coordinatorEndpoint) => {
             await tuya.configureMagicPacket(device, coordinatorEndpoint);
@@ -24609,6 +24672,7 @@ export const definitions: DefinitionWithExtend[] = [
                 "_TZ3000_r2fgo9ks",
             ]),
             tuya.whitelabel("Zemismart", "KES-606US-L3-EESS", "3 gang switch with neutral", ["_TZ3000_cziew6eu"]),
+            tuya.whitelabel("Mowe", "MW783Z", "3 gang switch with scene and backlight", ["_TZ300A_vqrs45nj"]),
         ],
         fromZigbee: [fzLocal.TS0726_action],
         exposes: [e.action(["scene_1", "scene_2", "scene_3"])],
@@ -24620,8 +24684,10 @@ export const definitions: DefinitionWithExtend[] = [
                 backlightModeOffOn: true,
                 indicatorModeNoneRelayPos: true,
                 onOffCountdown: true,
+                inchingSwitch: (m) => m === "_TZ300A_vqrs45nj",
                 endpoints: ["l1", "l2", "l3"],
             }),
+            tuya.clusters.addTuyaCommonPrivateCluster(),
         ],
         endpoint: (device) => ({l1: 1, l2: 2, l3: 3}),
         meta: {
@@ -27627,6 +27693,38 @@ export const definitions: DefinitionWithExtend[] = [
                         to: (v: string) => ({normal: 0, slight: 1, strong: 2, severe: 3})[v] ?? 0,
                     },
                 ],
+            ],
+        },
+    },
+    {
+        fingerprint: tuya.fingerprint("TS0601", ["_TZE284_grxx6qek"]),
+        model: "_TZE284_grxx6qek",
+        vendor: "Tuya",
+        description: "Temperature & humidity smart switch 16A",
+        // timeStart "1970": this MCU sanity-checks the mcuSyncTime answer and only
+        // accepts Unix epoch - with the Tuya-2000-epoch answer its sensor reporting
+        // freezes after every device reboot (validated on hardware). With no answer
+        // at all (default "off") it stops reporting as well.
+        extend: [tuya.modernExtend.tuyaBase({dp: true, timeStart: "1970"})],
+        exposes: [e.switch(), e.temperature(), e.humidity()],
+        meta: {
+            tuyaDatapoints: [
+                [
+                    2,
+                    "state",
+                    {
+                        // Custom converter instead of tuya.valueConverter.onOff to add
+                        // TOGGLE support, resolved against the current state.
+                        from: (v: boolean) => (v ? "ON" : "OFF"),
+                        to: (v: string, meta?: Tz.Meta) => (v === "TOGGLE" ? meta?.state.state !== "ON" : v === "ON"),
+                    },
+                    // The MCU reports DP 2 after every change, so the state comes from the
+                    // device report instead of an optimistic update (avoids publishing "TOGGLE").
+                    {optimistic: false},
+                ],
+                [27, "temperature", tuya.valueConverter.divideBy10],
+                // DP 28 tracks temperature*1.8+32 (Fahrenheit duplicate of DP 27) - not mapped, redundant.
+                [46, "humidity", tuya.valueConverter.raw],
             ],
         },
     },
