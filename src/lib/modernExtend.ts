@@ -3597,6 +3597,7 @@ export interface ThermostatArgs {
     runningState?: Omit<ValuesWithModernExtendConfiguration<constants.ThermostatRunningState[]>, "fromZigbee">;
     runningMode?: Omit<ValuesWithModernExtendConfiguration<constants.ThermostatRunningMode[]>, "fromZigbee">;
     fanMode?: constants.ThermostatFanMode[];
+    acLouverPosition?: Omit<ValuesWithModernExtendConfiguration<constants.ThermostatAcLouverPosition[]>, "fromZigbee">;
     piHeatingDemand?: Omit<ValuesWithModernExtendConfiguration<true | Access>, "fromZigbee"> & {dontMapPIHeatingDemand?: boolean};
     temperatureSetpointHold?: true | Omit<ValuesWithModernExtendConfiguration<true>, "values" | "fromZigbee" | "toZigbee">;
     temperatureSetpointHoldDuration?: true;
@@ -3617,6 +3618,7 @@ export function thermostat(args: ThermostatArgs): ModernExtend {
         runningState = undefined,
         runningMode = undefined,
         fanMode = undefined,
+        acLouverPosition = undefined,
         piHeatingDemand = undefined,
         temperatureSetpointHold = false,
         temperatureSetpointHoldDuration = false,
@@ -3771,6 +3773,24 @@ export function thermostat(args: ThermostatArgs): ModernExtend {
                 endpointNames: endpointNames,
             }),
         );
+    }
+
+    if (acLouverPosition) {
+        expose.withAcLouverPosition(acLouverPosition.values);
+
+        if (!acLouverPosition.toZigbee?.skip) {
+            toZigbee.push(tz.thermostat_ac_louver_position);
+        }
+
+        if (!acLouverPosition.configure?.skip) {
+            configure.push(
+                setupConfigureForReporting("hvacThermostat", "acLouverPosition", {
+                    config: acLouverPosition.configure?.reporting ?? repConfigChange0,
+                    access: acLouverPosition.configure?.access ?? ea.STATE_GET,
+                    endpointNames: endpointNames,
+                }),
+            );
+        }
     }
 
     if (piHeatingDemand) {
