@@ -1,4 +1,5 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
+import {Zcl} from "zigbee-herdsman";
 import {findByDevice} from "../src/index";
 import {fromZigbee, lumiModernExtend, numericAttributes2Payload, type TrvScheduleConfig, toZigbee, trv, w500Ntc} from "../src/lib/lumi";
 import * as globalStore from "../src/lib/store";
@@ -18,6 +19,35 @@ describe("lib/lumi", () => {
                 "manuSpecificLumi",
                 {mode: 1},
                 {manufacturerCode: 0x115f, disableResponse: true},
+            );
+        });
+    });
+
+    describe("FP310 presence reporting", () => {
+        it("configures reporting for presence (0x0142)", async () => {
+            const device = mockDevice(
+                {
+                    modelID: "lumi.sensor_occupy.acn1",
+                    endpoints: [
+                        {
+                            ID: 1,
+                            inputClusterIDs: [0xfcc0, 1024, 1029, 1026],
+                        },
+                    ],
+                },
+                "EndDevice",
+            );
+            const coordinatorEndpoint = mockDevice({modelID: "coordinator", endpoints: [{ID: 1}]}).getEndpoint(1);
+            const definition = await findByDevice(device);
+
+            await definition.configure?.(device, coordinatorEndpoint, definition);
+
+            const endpoint = device.getEndpoint(1);
+            expect(endpoint.bind).toHaveBeenCalledWith("manuSpecificLumi", coordinatorEndpoint);
+            expect(endpoint.configureReporting).toHaveBeenCalledWith(
+                "manuSpecificLumi",
+                [{attribute: {ID: 0x0142, type: Zcl.DataType.UINT8}, minimumReportInterval: 0, maximumReportInterval: 3600, reportableChange: 1}],
+                {manufacturerCode: 0x115f},
             );
         });
     });
@@ -52,6 +82,27 @@ describe("lib/lumi", () => {
                 null,
             );
             expect(globalStore.getValue(device, "lumi_struct_last_received")).toBeGreaterThanOrEqual(before);
+        });
+
+        it("does not take presence or PIR detection from the 0x00F7 struct", async () => {
+            const device = mockDevice({modelID: "lumi.sensor_occupy.agl8", endpoints: [{ID: 1}]}, "EndDevice");
+            const definition = await findByDevice(device);
+            // 0x00F7 read response from firmware 0.0.0_6542, received while the device reported presence (0x0142) = 1:
+            // tag 100 = 0, tag 101 = 2, tag 103 = 0
+            const struct = Buffer.from([
+                5, 33, 2, 0, 10, 33, 73, 229, 12, 32, 10, 13, 35, 42, 65, 0, 0, 19, 32, 0, 23, 33, 196, 11, 24, 32, 100, 28, 16, 0, 100, 32, 0, 101,
+                32, 2, 103, 32, 0,
+            ]);
+            const convert = (data: KeyValueAny) =>
+                // @ts-expect-error mock
+                fromZigbee.lumi_specific.convert(definition, {data, device, endpoint: device.getEndpoint(1)}, null, {}, {device});
+
+            const structPayload = await convert({247: struct});
+            expect(structPayload).not.toHaveProperty("presence");
+            expect(structPayload).not.toHaveProperty("pir_detection");
+            expect(structPayload).not.toHaveProperty("state");
+            expect(await convert({322: 1})).toStrictEqual({presence: true});
+            expect(await convert({322: 0})).toStrictEqual({presence: false});
         });
     });
 
