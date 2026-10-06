@@ -21,6 +21,12 @@ interface FuturehomeHaApplianceControl {
     commandResponses: never;
 }
 
+interface FuturehomeXtraHaApplianceControl {
+    attributes: {a5: number; a6: number; a7: number; a8: number; aa: number; ab: number; a10: number};
+    commands: never;
+    commandResponses: never;
+}
+
 const localValueConverters = {
     energyMonotonic: {
         from: (value: number, meta: Fz.Meta) => {
@@ -38,6 +44,240 @@ const localValueConverters = {
 };
 
 const futurehomeExtend = {
+    addExtraHaApplianceControl: () =>
+        m.deviceAddCustomCluster("haApplianceControl", {
+            name: "haApplianceControl",
+            ID: Zcl.Clusters.haApplianceControl.ID,
+            attributes: {
+                a5: {
+                    name: "a5",
+                    ID: 0xef05,
+                    type: Zcl.DataType.UINT8,
+                    manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS,
+                    write: true,
+                },
+                a6: {
+                    name: "a6",
+                    ID: 0xef06,
+                    type: Zcl.DataType.UINT8,
+                    manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS,
+                    write: true,
+                },
+                a7: {
+                    name: "a7",
+                    ID: 0xef07,
+                    type: Zcl.DataType.UINT8,
+                    manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS,
+                    write: true,
+                },
+                a8: {
+                    name: "a8",
+                    ID: 0xef08,
+                    type: Zcl.DataType.UINT8,
+                    manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS,
+                    write: true,
+                },
+                aa: {
+                    name: "aa",
+                    ID: 0xef0a,
+                    type: Zcl.DataType.UINT8,
+                    manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS,
+                    write: true,
+                },
+                ab: {
+                    name: "ab",
+                    ID: 0xef0b,
+                    type: Zcl.DataType.UINT8,
+                    manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS,
+                    write: true,
+                },
+                a10: {
+                    name: "a10",
+                    ID: 0xef10,
+                    type: Zcl.DataType.UINT16, // tested with write
+                    manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS,
+                    write: true,
+                },
+            },
+            commands: {},
+            commandsResponse: {},
+        }),
+    chargerExtraAttr: () => [
+        m.numeric<"haApplianceControl", FuturehomeHaApplianceControl>({
+            name: "start_t",
+            cluster: "haApplianceControl",
+            attribute: "chargingSessionStartTime",
+            description: "Start time of charging session. Time in seconds. Should be converted to date and time.",
+            access: "STATE",
+            scale: 1.0,
+            unit: "s",
+            reporting: {min: 5, max: "1_HOUR", change: 1},
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        }),
+        m.numeric<"haApplianceControl", FuturehomeHaApplianceControl>({
+            name: "end_t",
+            cluster: "haApplianceControl",
+            attribute: "chargingSessionEndTime",
+            description: "End time of charging session. Time in seconds. Should be converted to date and time.",
+            access: "STATE",
+            scale: 1.0,
+            unit: "s",
+            reporting: {min: 5, max: "1_HOUR", change: 1},
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        }),
+        m.numeric<"haApplianceControl", FuturehomeXtraHaApplianceControl>({
+            name: "a5",
+            cluster: "haApplianceControl",
+            attribute: "a5",
+            description: "a5 - not reportable",
+            access: "STATE_GET",
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        }),
+        m.numeric<"haApplianceControl", FuturehomeXtraHaApplianceControl>({
+            name: "a6",
+            cluster: "haApplianceControl",
+            attribute: "a6",
+            description: "a6  ??",
+            access: "STATE_GET",
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        }),
+        m.numeric<"haApplianceControl", FuturehomeXtraHaApplianceControl>({
+            name: "a7",
+            cluster: "haApplianceControl",
+            attribute: "a7",
+            description: "a7 - not reportable",
+            access: "STATE_GET",
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        }),
+        m.numeric<"haApplianceControl", FuturehomeXtraHaApplianceControl>({
+            name: "a8",
+            cluster: "haApplianceControl",
+            attribute: "a8",
+            description: "a8 - not reportable",
+            access: "STATE_GET",
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        }),
+        m.numeric<"haApplianceControl", FuturehomeHaApplianceControl>({
+            name: "status_code",
+            cluster: "haApplianceControl",
+            attribute: "status",
+            description: "Status code",
+            access: "STATE_GET",
+        }),
+        m.numeric<"haApplianceControl", FuturehomeXtraHaApplianceControl>({
+            name: "aa",
+            cluster: "haApplianceControl",
+            attribute: "aa",
+            description: "aa",
+            access: "STATE_GET",
+            reporting: {min: 5, max: "1_HOUR", change: 1},
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        }),
+        m.numeric<"haApplianceControl", FuturehomeXtraHaApplianceControl>({
+            name: "ab",
+            cluster: "haApplianceControl",
+            attribute: "ab",
+            description: "ab - not reportable",
+            access: "STATE_GET",
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        }),
+        m.numeric<"haApplianceControl", FuturehomeXtraHaApplianceControl>({
+            name: "a10",
+            cluster: "haApplianceControl",
+            attribute: "a10",
+            description: "a10 - not reportable",
+            access: "STATE_GET",
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        }),
+        m.binary({
+            name: "actuator_enabled",
+            cluster: "closuresDoorLock",
+            attribute: "actuatorEnabled",
+            description:
+                "closuresDoorLock - actuatorEnabled, The ActuatorEnabled attribute indicates if the lock is currently able to (Enabled) or not able to (Disabled) process remote Lock, Unlock, or Unlock with Timeout commands.",
+            valueOn: ["ON", 1],
+            valueOff: ["OFF", 0],
+            access: "STATE_GET",
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        }),
+        m.binary({
+            name: "enable_privacy_mode_button",
+            cluster: "closuresDoorLock",
+            attribute: "enablePrivacyModeButton",
+            description: "closuresDoorLock - enablePrivacyModeButton",
+            valueOn: ["ON", 1],
+            valueOff: ["OFF", 0],
+            access: "STATE",
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        }),
+        m.enumLookup({
+            name: "lock_state",
+            cluster: "closuresDoorLock",
+            attribute: "lockState",
+            description: "closuresDoorLock - lockState",
+            lookup: {
+                not_fully_locked: 0x00,
+                locked: 0x01,
+                unlocked: 0x02,
+                undefined: 0xff,
+            },
+            access: "STATE_GET",
+            reporting: {min: 5, max: "1_HOUR", change: 1},
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        }),
+        m.numeric({
+            name: "lock_state_number",
+            cluster: "closuresDoorLock",
+            attribute: "lockState",
+            description: "closuresDoorLock - lockState number",
+            access: "STATE_GET",
+            reporting: {min: 5, max: "1_HOUR", change: 1},
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        }),
+        m.numeric({
+            name: "operating_mode",
+            cluster: "closuresDoorLock",
+            attribute: "operatingMode",
+            description: "closuresDoorLock - operatingMode",
+            access: "STATE_GET",
+            reporting: {min: 5, max: "1_HOUR", change: 1},
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        }),
+        m.numeric({
+            name: "present_value",
+            cluster: "genMultistateValue",
+            attribute: "presentValue",
+            description: "genMultistateValue - presentValue",
+            access: "STATE_GET",
+            reporting: {min: 5, max: "1_HOUR", change: 1},
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        }),
+        m.numeric({
+            name: "present_value2",
+            cluster: "genMultistateInput",
+            attribute: "presentValue",
+            description: "genMultistateInput - presentValue",
+            access: "STATE_GET",
+            reporting: {min: 5, max: "1_HOUR", change: 1},
+            zigbeeCommandOptions: {manufacturerCode: Zcl.ManufacturerCode.FUTUREHOME_AS},
+        }),
+        m.poll({
+            key: "measurement",
+            option: exposes.options.measurement_poll_interval().withDescription("Polling interval for xtra atrr a5 etc"),
+            defaultIntervalSeconds: 20,
+            poll: async (device) => {
+                const endpoint = device.endpoints.find((e) => e.supportsInputCluster("haApplianceControl"));
+                await endpoint.read<"haApplianceControl", FuturehomeXtraHaApplianceControl>("haApplianceControl", [
+                    "a5",
+                    "a6",
+                    "a7",
+                    "a8",
+                    "ab",
+                    "a10",
+                ]);
+            },
+        }),
+    ],
     chargingCommand: (): ModernExtend => {
         const commandLookup: {[key: string]: number} = {
             start: 0x01,
@@ -351,6 +591,7 @@ export const definitions: DefinitionWithExtend[] = [
         description: "Futurehome Charge (EV Charger)",
         version: "0.0.1",
         extend: [
+            futurehomeExtend.addExtraHaApplianceControl(),
             m.deviceAddCustomCluster("haApplianceControl", {
                 name: "haApplianceControl",
                 ID: Zcl.Clusters.haApplianceControl.ID,
@@ -492,6 +733,7 @@ export const definitions: DefinitionWithExtend[] = [
                 valueOn: [false, 0x02],
                 homeassistant: {icon: "mdi:lock", name: "Plug lock state", deviceClass: "lock"},
             }),
+            ...futurehomeExtend.chargerExtraAttr(),
         ],
     },
 ];
