@@ -993,6 +993,16 @@ export function pressure(args: Partial<NumericArgs<"msPressureMeasurement">> = {
         description: "The measured atmospheric pressure",
         unit: "hPa",
         scale: 1,
+        fzConvert(model, msg, publish, options, meta) {
+            let pressure = 0;
+            if (msg.data.scaledValue !== undefined) {
+                const scale = msg.endpoint.getClusterAttributeValue("msPressureMeasurement", "scale") as number;
+                pressure = msg.data.scaledValue / 10 ** scale / 100.0; // convert to hPa
+            } else {
+                pressure = msg.data.measuredValue;
+            }
+            return {pressure};
+        },
         access: "STATE_GET",
         ...args,
     });
