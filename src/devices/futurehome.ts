@@ -585,6 +585,13 @@ export const definitions: DefinitionWithExtend[] = [
         extend: [m.light({configureReporting: true})],
     },
     {
+        zigbeeModel: ["FH9127"],
+        model: "FH9127",
+        vendor: "Futurehome",
+        description: "In-wall dimmer",
+        extend: [m.light({configureReporting: true})],
+    },
+    {
         zigbeeModel: ["Charge"],
         model: "Charge",
         vendor: "Futurehome",
