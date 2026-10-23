@@ -985,27 +985,30 @@ export function temperature(args: Partial<NumericArgs<"msTemperatureMeasurement"
 }
 
 export function pressure(args: Partial<NumericArgs<"msPressureMeasurement">> = {}): ModernExtend {
-    return numeric({
+    const scale = args.scale ?? 1;
+    const result = numeric({
         name: "pressure",
         cluster: "msPressureMeasurement",
         attribute: "measuredValue",
         reporting: {min: "10_SECONDS", max: "1_HOUR", change: 5}, // 5 hPa
         description: "The measured atmospheric pressure",
         unit: "hPa",
-        scale: 1,
+        access: "STATE_GET",
+        ...args,
         fzConvert(model, msg, publish, options, meta) {
             let pressure = 0;
             if (msg.data.scaledValue !== undefined) {
-                const scale = msg.endpoint.getClusterAttributeValue("msPressureMeasurement", "scale") as number;
-                pressure = msg.data.scaledValue / 10 ** scale / 100.0; // convert to hPa
+                const scalePressure = msg.endpoint.getClusterAttributeValue("msPressureMeasurement", "scale") as number;
+                pressure = msg.data.scaledValue / 10 ** scalePressure / 100.0; // convert to hPa
             } else {
-                pressure = msg.data.measuredValue;
+                pressure = msg.data.measuredValue as number;
             }
-            return {pressure};
+            const propertyName = postfixWithEndpointName("pressure", msg, model, meta);
+            pressure = typeof scale === "number" ? pressure / scale : scale(pressure, "from");
+            return {[propertyName]: pressure};
         },
-        access: "STATE_GET",
-        ...args,
     });
+    return result;
 }
 
 export function flow(args: Partial<NumericArgs<"msFlowMeasurement">> = {}) {
