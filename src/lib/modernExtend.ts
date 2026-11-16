@@ -998,8 +998,8 @@ export function pressure(args: Partial<NumericArgs<"msPressureMeasurement">> = {
         fzConvert(model, msg, publish, options, meta) {
             let pressure = 0;
             if (msg.data.scaledValue !== undefined) {
-                const scalePressure = msg.endpoint.getClusterAttributeValue("msPressureMeasurement", "scale") as number;
-                pressure = msg.data.scaledValue / 10 ** scalePressure / 100.0; // convert to hPa
+                const clusterScale = msg.endpoint.getClusterAttributeValue("msPressureMeasurement", "scale") as number;
+                pressure = msg.data.scaledValue / 10 ** clusterScale / 100.0; // convert to hPa
             } else {
                 pressure = msg.data.measuredValue as number;
             }
