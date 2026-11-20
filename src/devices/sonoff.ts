@@ -280,6 +280,13 @@ interface SonoffSnzb02m {
     commandResponses: never;
 }
 
+interface SonoffSnzb02mPressure {
+    attributes: {
+        pressure: number;
+    };
+    commands: never;
+    commandResponses: never;
+}
 // **************************** SWV-ZN/ZF related ↓ ****************************
 interface SonoffSwvzn {
     attributes: {
@@ -386,6 +393,33 @@ interface SonoffSnzb02ul {
     commandResponses: {
         getCurrentWeatherInfoReply: {data: number[]};
     };
+}
+
+interface SonoffSsZ2n {
+    attributes: {
+        temperatureUnits: number;
+        temperatureCalibration: number;
+        humidityCalibration: number;
+        measureInterval: number;
+        comfortTemperatureMax: number;
+        comfortTemperatureMin: number;
+        comfortHumidityMin: number;
+        comfortHumidityMax: number;
+        frostProtectionTemperature: number;
+        temperatureThresholdEnable: number;
+        humidityThresholdEnable: number;
+        frostThresholdEnable: number;
+        temperatureMaxInHour: number;
+        temperatureMinInHour: number;
+        temperatureAverInHour: number;
+        humidityMaxInHour: number;
+        humidityMinInHour: number;
+        humidityAverInHour: number;
+    };
+    commands: {
+        refreshMeasurements: Record<never, never>;
+    };
+    commandResponses: never;
 }
 
 type SonoffStructElement = {elmType: number; elmVal: unknown};
@@ -651,16 +685,25 @@ const sonoffTpWgzbaOverheatProtectionTemperatureRange = {min: 20, max: 50, step:
 const sonoffTpWgzbaTemperatureControlHistoryValueOffset = 9;
 const sonoffTpWgzbaTemperatureControlHistoryCacheTimeoutMs = 30 * 1000;
 
-const formatSonoffTpWgzbaNtcTemperature = (value: unknown): string => {
+const sonoffTpWgzbaNtcSensorStatusValues = ["ok", ...Object.values(sonoffTpWgzbaNtcTemperatureStatusLookup)];
+
+/**
+ * Split the raw NTC attribute into a temperature and a sensor status.
+ * The device reports either a temperature (0.01 °C) or a reserved fault code on the same attribute;
+ * on a fault the temperature is `null` so Home Assistant shows it as unknown.
+ */
+const parseSonoffTpWgzbaNtcTemperature = (value: unknown): {temperature: number | null; status: string} => {
     utils.assertNumber(value, "currentNtcTemperature");
     const rawValue = value & 0xffff;
     const status = sonoffTpWgzbaNtcTemperatureStatusLookup[rawValue as keyof typeof sonoffTpWgzbaNtcTemperatureStatusLookup];
-    if (status !== undefined) return status;
+    if (status !== undefined) return {temperature: null, status};
 
     const signedValue = rawValue >= 0x8000 ? rawValue - 0x10000 : rawValue;
-    if (signedValue < sonoffTpWgzbaNtcTemperatureMinimumRaw) return sonoffTpWgzbaNtcTemperatureStatusLookup[32768];
+    if (signedValue < sonoffTpWgzbaNtcTemperatureMinimumRaw) {
+        return {temperature: null, status: sonoffTpWgzbaNtcTemperatureStatusLookup[32768]};
+    }
 
-    return `${(signedValue / sonoffTpWgzbaTemperatureScale).toFixed(2)} °C`;
+    return {temperature: signedValue / sonoffTpWgzbaTemperatureScale, status: "ok"};
 };
 
 type SonoffTrvzbtTemperatureControlHistoryType = "day" | "month" | "half_year";
@@ -1496,6 +1539,10 @@ const featureGates = {
     snzb02dr2_legacy_remote_source: (device: Zh.Device): boolean => !featureGates.snzb02dr2_support_remote_source(device),
     snzb02dr2_support_remote_source: firmwareSupportFeaturesVersion("1.0.5", "higher"),
     zbminir2_external_switch_actions: firmwareSupportFeaturesVersion("1.1.0", "higher", {modelID: "ZBMINIR2"}),
+    zbminil2_external_switch_trigger_mode: firmwareSupportFeaturesVersion("1.0.19", "higher", {modelID: "ZBMINIL2"}),
+    zbrbs_single_switch_mode: firmwareSupportFeaturesVersion("1.2.0", "higher", {modelID: "MINI-ZBRBS"}),
+    mini_zb2gs_external_switch_actions: firmwareSupportFeaturesVersion("1.1.2", "higher", {modelID: "MINI-ZB2GS"}),
+    mini_zb2gsl_external_switch_actions: firmwareSupportFeaturesVersion("1.0.5", "higher", {modelID: "MINI-ZB2GS-L"}),
     snzb09p_support_chime: firmwareSupportFeaturesVersion("1.1.9", "higher", {modelID: "SNZB-09P"}),
     snzb09p_support_alarm_status: firmwareSupportFeaturesVersion("1.1.9", "higher", {modelID: "SNZB-09P"}),
     // Single-channel SWV-ZF* supports unified units from 1.1.0; dual-channel SWV-ZF2 supports them from 1.0.9.
@@ -1568,7 +1615,7 @@ const fzLocal = {
             // Device keeps reporting a acCurrentPowerValue after turning OFF.
             // Make sure power = 0 when turned OFF
             // https://github.com/Koenkk/zigbee2mqtt/issues/28470
-            let result = fz.on_off.convert(model, msg, publish, options, meta);
+            let result = fz.on_off.convert(model, msg, publish, options, meta) as KeyValueAny;
             if (msg.data.onOff === 0) {
                 result = {...result, power: 0, current: 0};
             }
@@ -1703,6 +1750,7 @@ const tzLocal = {
 
 type ExternalSwitchTypeCfgAgs = {
     endpointNames?: string[];
+    values?: ("edge" | "pulse" | "following(off)" | "following(on)")[];
 };
 type ExternalInchingAgs = {
     endpointNames?: string[];
@@ -1726,6 +1774,7 @@ export interface SonoffEwelink {
         lackWaterCloseValveTimeout: number;
         motorTravelCalibrationStatus: number;
         motorRunStatus: number;
+        singleSwitchMode: number;
         acCurrentCurrentValue: number;
         acCurrentVoltageValue: number;
         acCurrentPowerValue: number;
@@ -1758,6 +1807,7 @@ export interface SonoffEwelink {
         monthlyElectricityCost: number;
         dailyRunTime: number;
         totalRunTime: number;
+        voltageFrequency: number;
         totalEnergyConsumption: number;
         totalOutputEnergyConsumption: number;
         currentElectricalPriceList: number[];
@@ -1880,36 +1930,35 @@ const parseSonoffSnzb02dr2RemoteSourceElements = (elements: number[] | undefined
 };
 
 const sonoffExtend = {
-    zbminiR2ExternalSwitchActions: (): ModernExtend => {
+    externalSwitchActions: (args: {endpointNames?: string[]; gate: FirmwareFeatureGate}): ModernExtend => {
         const clusterName = "customClusterEwelink" as const;
         const actionLookup: Record<number, string> = {
             2: "double_click",
             3: "long_press",
-        } as const;
-        const supportNewActions = featureGates.zbminir2_external_switch_actions;
+            4: "switch_on",
+            5: "switch_off",
+        };
+        const {endpointNames = undefined, gate} = args;
         const getActions = (device: Zh.Device | DummyDevice): string[] => {
             const actions = ["toggle"];
-            if (utils.isDummyDevice(device) || supportNewActions(device)) {
+            if (utils.isDummyDevice(device) || gate(device)) {
                 actions.push(...Object.values(actionLookup));
             }
-            return actions;
+            return endpointNames ? actions.flatMap((action) => endpointNames.map((endpointName) => `${action}_${endpointName}`)) : actions;
         };
         const externalSwitchConverter = {
             cluster: clusterName,
             type: ["attributeReport"],
-            convert: (model, msg) => {
-                if (!supportNewActions(msg.device)) {
+            convert: (model, msg, publish, options, meta) => {
+                if (!gate(msg.device)) {
                     return;
                 }
                 const value = msg.data.detachRelayActionEvent;
-                if (value === undefined) {
-                    return;
-                }
                 const action = actionLookup[value];
                 if (action === undefined) {
                     return;
                 }
-                return {action};
+                return {action: utils.postfixWithEndpointName(action, msg, model, meta)};
             },
         } satisfies Fz.Converter<typeof clusterName, SonoffEwelink, ["attributeReport"]>;
         return {
@@ -2243,6 +2292,7 @@ const sonoffExtend = {
                 lackWaterCloseValveTimeout: {name: "lackWaterCloseValveTimeout", ID: 0x5011, type: Zcl.DataType.UINT16, write: true, max: 0xffff},
                 motorTravelCalibrationStatus: {name: "motorTravelCalibrationStatus", ID: 0x5012, type: Zcl.DataType.UINT8, write: true, max: 0xff},
                 motorRunStatus: {name: "motorRunStatus", ID: 0x5013, type: Zcl.DataType.UINT8, write: true, max: 0xff},
+                singleSwitchMode: {name: "singleSwitchMode", ID: 0x6038, type: Zcl.DataType.BOOLEAN, write: true},
                 acCurrentCurrentValue: {name: "acCurrentCurrentValue", ID: 0x7004, type: Zcl.DataType.UINT32, write: true, max: 0xffffffff},
                 acCurrentVoltageValue: {name: "acCurrentVoltageValue", ID: 0x7005, type: Zcl.DataType.UINT32, write: true, max: 0xffffffff},
                 acCurrentPowerValue: {name: "acCurrentPowerValue", ID: 0x7006, type: Zcl.DataType.UINT32, write: true, max: 0xffffffff},
@@ -4308,6 +4358,7 @@ const sonoffExtend = {
         const commandId = 0x14;
         const replyCommandName = "getCurrentWeatherInfoReply";
         const weatherKey = "weather";
+        const setCoordinatesKey = "periodic_weather_updates";
         const DEFAULT_LONGITUDE_MICRO = 114057900;
         const DEFAULT_LATITUDE_MICRO = 22543100;
         const WEATHER_TO_VALUE: Record<string, number> = {
@@ -4319,22 +4370,50 @@ const sonoffExtend = {
             windy: 0x05,
         };
 
-        const expose = e
+        const setCoordinatesExpose = e
+            .enum(setCoordinatesKey, ea.SET, ["enable"])
+            .withCategory("config")
+            .withDescription(
+                "Enable weather updates every 4 hours. Note: This feature does not fetch weather data. A Blueprint or custom external converter is required to provide weather information. After enabling, press the device button to save the setting.",
+            );
+
+        const weatherExpose = e
             .enum(weatherKey, ea.STATE_SET, Object.keys(WEATHER_TO_VALUE))
             .withCategory("config")
             .withDescription(
-                "Weather shown on the E-ink screen. Selecting a value sends the default coordinates to the device and is applied on its next weather request. Note: wake up the device by pressing the button on the back before changing this value.",
+                "Manually select a weather icon to display on the E-Ink screen. The display updates immediately if the device is awake. Otherwise, the selected weather will be saved and applied at the next weather update (if Weather Updates is enabled).",
             );
 
         const toZigbee: Tz.Converter[] = [
             {
-                key: [weatherKey],
+                key: [setCoordinatesKey],
                 convertSet: async (entity, key, value, meta) => {
                     await entity.write<"customClusterEwelink", SonoffSnzb02ul>(
                         clusterName,
                         {longitude: DEFAULT_LONGITUDE_MICRO, latitude: DEFAULT_LATITUDE_MICRO},
                         utils.getOptions(meta.mapped, entity),
                     );
+                },
+            },
+            {
+                key: [weatherKey],
+                convertSet: (entity, key, value) => {
+                    utils.assertString(value, key);
+
+                    if ("commandResponse" in entity) {
+                        entity
+                            .commandResponse<typeof clusterName, typeof replyCommandName, SonoffSnzb02ul>(
+                                clusterName,
+                                replyCommandName,
+                                {data: [0x00, 0x01, WEATHER_TO_VALUE[value]]},
+                                {
+                                    direction: Zcl.Direction.CLIENT_TO_SERVER,
+                                    disableDefaultResponse: true,
+                                    manufacturerCode: Zcl.ManufacturerCode.SHENZHEN_COOLKIT_TECHNOLOGY_CO_LTD,
+                                },
+                            )
+                            .catch((): void => undefined);
+                    }
                     return {state: {[weatherKey]: value}};
                 },
             },
@@ -4395,7 +4474,7 @@ const sonoffExtend = {
             },
         ];
 
-        return {exposes: [expose], fromZigbee, toZigbee, isModernExtend: true};
+        return {exposes: [setCoordinatesExpose, weatherExpose], fromZigbee, toZigbee, isModernExtend: true};
     },
     tpWgzbaTemperatureHysteresis: (): ModernExtend => {
         const clusterName = "customSonoffTpWgzba";
@@ -4717,24 +4796,33 @@ const sonoffExtend = {
     },
     tpWgzbaNtcTemperature: (): ModernExtend => {
         const clusterName = "customSonoffTpWgzba";
-        const key = "ntc_temperature";
-        const exposes = e
-            .text(key, ea.STATE)
-            .withLabel("NTC temperature")
-            .withCategory("diagnostic")
-            .withDescription("Current external NTC temperature or sensor status.");
+        const exposes = [
+            e
+                .numeric("ntc_temperature", ea.STATE)
+                .withLabel("NTC temperature")
+                .withUnit("°C")
+                .withDescription("Current external NTC temperature, null when the sensor reports a fault (see ntc_sensor_status).")
+                // The device reports this every few seconds and the probe signal is noisy, so keep it out of the HA database unless enabled
+                .withHomeAssistant({enabledByDefault: false}),
+            e
+                .enum("ntc_sensor_status", ea.STATE, sonoffTpWgzbaNtcSensorStatusValues)
+                .withLabel("NTC sensor status")
+                .withCategory("diagnostic")
+                .withDescription("Status of the external NTC sensor."),
+        ];
         const fromZigbee: Fz.Converter<typeof clusterName, SonoffTpWgzba, ["attributeReport", "readResponse"]>[] = [
             {
                 cluster: clusterName,
                 type: ["attributeReport", "readResponse"],
                 convert: (model, msg) => {
                     if (msg.data.currentNtcTemperature === undefined) return;
-                    return {[key]: formatSonoffTpWgzbaNtcTemperature(msg.data.currentNtcTemperature)};
+                    const {temperature, status} = parseSonoffTpWgzbaNtcTemperature(msg.data.currentNtcTemperature);
+                    return {ntc_temperature: temperature, ntc_sensor_status: status};
                 },
             },
         ];
 
-        return {exposes: [exposes], fromZigbee, isModernExtend: true};
+        return {exposes, fromZigbee, isModernExtend: true};
     },
     cyclicTimedIrrigation: (): ModernExtend => {
         const exposes = e
@@ -4978,17 +5066,14 @@ const sonoffExtend = {
     externalSwitchTriggerMode: (args: ExternalSwitchTypeCfgAgs = {}): ModernExtend => {
         const clusterName = "customClusterEwelink" as const;
         const attributeName = "externalTriggerMode" as const;
-        const {endpointNames = undefined} = args;
+        const {endpointNames = undefined, values = ["edge", "pulse", "following(off)", "following(on)"]} = args;
         const description: string =
-            "External trigger mode, which can be one of edge, pulse, " +
-            "following(off), following(on). The appropriate triggering mode can be selected according to the type of " +
+            `External trigger mode, which can be one of ${values.join(", ")}. ` +
+            "The appropriate triggering mode can be selected according to the type of " +
             "external switch to achieve a better use experience.";
 
         const exposes: Expose[] = utils.exposeEndpoints(
-            e
-                .enum("external_trigger_mode", ea.ALL, ["edge", "pulse", "following(off)", "following(on)"])
-                .withDescription(description)
-                .withCategory("config"),
+            e.enum("external_trigger_mode", ea.ALL, values).withDescription(description).withCategory("config"),
             endpointNames,
         );
 
@@ -5008,7 +5093,10 @@ const sonoffExtend = {
                             }
                         }
                         // logger.debug(`form zigbee switchType ${switchType}`, NS);
-                        return {external_trigger_mode: switchType};
+                        const property = endpointNames
+                            ? utils.postfixWithEndpointName("external_trigger_mode", msg, model, meta)
+                            : "external_trigger_mode";
+                        return {[property]: switchType};
                     }
                 },
             } satisfies Fz.Converter<typeof clusterName, SonoffEwelink, ["attributeReport", "readResponse"]>,
@@ -5444,13 +5532,13 @@ const sonoffExtend = {
     swvznGenTimeCompatResponse: (): ModernExtend => {
         const onEvent: OnEvent.Handler[] = [
             (event) => {
-                if (event.type === "start" && !event.data.device.customReadResponse) {
+                if ((event.type === "start" || event.type === "deviceJoined") && !event.data.device.customReadResponse) {
                     event.data.device.customReadResponse = (frame, endpoint) => {
                         if (!frame.isCluster("genTime")) {
                             return false;
                         }
 
-                        const {time, timeZone, localTime, dstShift} = getTimeClusterAttributes();
+                        const {time, timeZone, localTime, dstStart, dstEnd, dstShift} = getTimeClusterAttributes();
 
                         // XXX: we're replying to specific attributes, which could be incorrect (not based on the request attrIds)
                         endpoint
@@ -5458,8 +5546,8 @@ const sonoffExtend = {
                                 time,
                                 timeZone,
                                 localTime,
-                                dstStart: 0, // The device's Zigbee behavior is a bit non-standard.
-                                dstEnd: 0,
+                                dstStart,
+                                dstEnd,
                                 dstShift,
                             })
                             .catch((e) => {
@@ -8150,7 +8238,11 @@ const sonoffExtend = {
             return {dew_point: dewPoint, vpd};
         };
         const exposes: Expose[] = [
-            e.numeric("dew_point", ea.STATE).withUnit("°C").withDescription("Calculated dew point temperature"),
+            e
+                .numeric("dew_point", ea.STATE)
+                .withUnit("°C")
+                .withDescription("Calculated dew point temperature")
+                .withHomeAssistant({name: "Dew point"}),
             e.numeric("vpd", ea.STATE).withUnit("kPa").withDescription("Calculated vapor pressure deficit"),
         ];
         const fromZigbee: Fz.Converter<"msTemperatureMeasurement" | "msRelativeHumidity", undefined, ["attributeReport", "readResponse"]>[] = [
@@ -8894,6 +8986,31 @@ const sonoffExtend = {
             isModernExtend: true,
         };
     },
+    /** SS-Z2N: manual measurement refresh command. */
+    ssZ2nRefreshMeasurements: (): ModernExtend => ({
+        exposes: [
+            e
+                .enum("refresh_measurements", ea.SET, ["refresh"])
+                .withDescription(
+                    "Click Refresh to take new soil temperature and moisture measurements. The device will report the latest readings once the measurements are complete.",
+                ),
+        ],
+        toZigbee: [
+            {
+                key: ["refresh_measurements"],
+                convertSet: async (entity, key, value, meta) => {
+                    await entity.command<"customClusterEwelink", "refreshMeasurements", SonoffSsZ2n>(
+                        "customClusterEwelink",
+                        "refreshMeasurements",
+                        {},
+                        utils.getOptions(meta.mapped, entity),
+                    );
+                    return {state: {refresh_measurements: value}};
+                },
+            },
+        ],
+        isModernExtend: true,
+    }),
 };
 
 // Filter out 0 value for timer_mode_target_temp, as 0 indicates "no timer target temperature set"
@@ -8911,6 +9028,88 @@ const trvzbTimerModeTempFzConvert: Fz.Converter<"customSonoffTrvzb", SonoffTrvzb
         return {timer_mode_target_temp: value / 100};
     }
     return undefined;
+};
+
+/**
+ * SS-Z2N: classify a measurement against the configured comfort thresholds.
+ * Values equal to the minimum or the maximum are classified as `Normal`.
+ */
+const ssZ2nClassifyStatus = (value: unknown, min: unknown, max: unknown): "Low" | "Normal" | "High" | undefined => {
+    if (typeof value !== "number" || typeof min !== "number" || typeof max !== "number") {
+        return undefined;
+    }
+
+    return value < min ? "Low" : value > max ? "High" : "Normal";
+};
+
+/**
+ * SS-Z2N: comfort threshold convertSet that validates min/max ordering and keeps the derived status in sync.
+ * Designed for use with `m.numeric({ tzConvertSet: ... })`.
+ */
+const ssZ2nThresholdConvertSet = (args: {
+    attribute: keyof SonoffSsZ2n["attributes"];
+    statusKey: string;
+    pairKey: string;
+    measureKey: string;
+    isMin: boolean;
+}): Tz.Converter["convertSet"] => {
+    const {attribute, statusKey, pairKey, measureKey, isMin} = args;
+
+    return async (entity, key, value, meta) => {
+        utils.assertNumber(value, key);
+
+        const cachedPair = meta.state?.[pairKey];
+        if (typeof cachedPair === "number") {
+            const inverted = isMin ? value >= cachedPair : value <= cachedPair;
+            if (inverted) {
+                const current = meta.state?.[key];
+                if (typeof current === "number") {
+                    // z2m only logs converter errors, so the control would keep the rejected value.
+                    // The frontend merges device state with a 250 ms debounce, so the publishes have to be
+                    // spaced out, otherwise they collapse into one update equal to the current value.
+                    await meta.publish({[key]: value});
+                    await new Promise((resolve) => setTimeout(resolve, 400));
+                    await meta.publish({[key]: current});
+                }
+                // The frontend shows the content of the last parenthesis of this message as a toast, so the
+                // sentence sits inside it. Keep it free of nested parentheses.
+                throw new Error(
+                    isMin ? `invalid threshold (${key} must be lower than ${pairKey})` : `invalid threshold (${key} must be higher than ${pairKey})`,
+                );
+            }
+        }
+
+        await entity.write<"customClusterEwelink", SonoffSsZ2n>("customClusterEwelink", {[attribute]: Math.round(value * 100)} as Partial<
+            SonoffSsZ2n["attributes"]
+        >);
+
+        const status = ssZ2nClassifyStatus(meta.state?.[measureKey], isMin ? value : cachedPair, isMin ? cachedPair : value);
+
+        return {state: status === undefined ? {[key]: value} : {[key]: value, [statusKey]: status}};
+    };
+};
+
+/**
+ * SS-Z2N: frost risk classification, `Risk` below the configured frost protection threshold.
+ */
+const ssZ2nClassifyFrostRisk = (value: unknown, threshold: unknown): "Risk" | "Normal" | undefined => {
+    if (typeof value !== "number" || typeof threshold !== "number") {
+        return undefined;
+    }
+
+    return value < threshold ? "Risk" : "Normal";
+};
+
+/**
+ * SS-Z2N: frost protection threshold convertSet that keeps the derived frost risk status in sync.
+ */
+const ssZ2nFrostThresholdConvertSet: Tz.Converter["convertSet"] = async (entity, key, value, meta) => {
+    utils.assertNumber(value, key);
+    await entity.write<"customClusterEwelink", SonoffSsZ2n>("customClusterEwelink", {frostProtectionTemperature: Math.round(value * 100)});
+
+    const status = ssZ2nClassifyFrostRisk(meta.state?.temperature, value);
+
+    return {state: status === undefined ? {[key]: value} : {[key]: value, frost_risk_status: status}};
 };
 
 export const definitions: DefinitionWithExtend[] = [
@@ -8956,7 +9155,14 @@ export const definitions: DefinitionWithExtend[] = [
         model: "ZBMINIL2",
         vendor: "SONOFF",
         description: "Zigbee smart switch (no neutral)",
-        extend: [m.onOff()],
+        extend: [
+            m.onOff(),
+            sonoffExtend.addCustomClusterEwelink(),
+            withConditionalExpose(
+                sonoffExtend.externalSwitchTriggerMode({values: ["edge", "pulse"]}),
+                featureGates.zbminil2_external_switch_trigger_mode,
+            ),
+        ],
         ota: true,
         configure: async (device, coordinatorEndpoint) => {
             // Unbind genPollCtrl to prevent device from sending checkin message.
@@ -8966,6 +9172,12 @@ export const definitions: DefinitionWithExtend[] = [
             const endpoint = device.getEndpoint(1);
             if (endpoint.binds.some((b) => b.cluster.name === "genPollCtrl")) {
                 await device.getEndpoint(1).unbind("genPollCtrl", coordinatorEndpoint);
+            }
+            // Bind and read the external switch trigger type when supported by the firmware (0xFC11/0x0016,
+            // factory default 0x00 = edge trigger, i.e. rocker switch; 0x01 = pulse trigger, i.e. momentary switch).
+            if (featureGates.zbminil2_external_switch_trigger_mode(device)) {
+                await reporting.bind(endpoint, coordinatorEndpoint, ["customClusterEwelink"]);
+                await endpoint.read<"customClusterEwelink", SonoffEwelink>("customClusterEwelink", ["externalTriggerMode"], defaultResponseOptions);
             }
             device.powerSource = "Mains (single phase)";
             device.save();
@@ -9018,7 +9230,9 @@ export const definitions: DefinitionWithExtend[] = [
                 fingerprint: [{modelID: "CK-TLSR8656-SS5-01(7003)", manufacturerName: "eWeLink"}],
             },
             tuya.whitelabel("Tuya", "WL-19DWZ", "Contact sensor", ["_TZ3000_n2egfsli"]),
-            tuya.whitelabel("zbeacon", "DS01", "Contact sensor", ["zbeacon"]),
+            // Some batches report the manufacturer name as "Zbeacon" instead of "zbeacon"; fingerprints are
+            // compared case-sensitively, so both spellings are needed for the same whitelabel.
+            tuya.whitelabel("zbeacon", "DS01", "Contact sensor", ["zbeacon", "Zbeacon"]),
         ],
         description: "Contact sensor",
         extend: [ewelinkBattery(), m.iasZoneAlarm({zoneType: "contact", zoneAttributes: ["alarm_1", "battery_low"]})],
@@ -9171,6 +9385,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.bindCluster({cluster: "genPollCtrl", clusterType: "input"}),
             m.numeric<"customSonoffSnzb02d", SonoffSnzb02d>({
                 name: "comfort_temperature_min",
+                homeassistant: {name: "Comfort temperature min"},
                 cluster: "customSonoffSnzb02d",
                 attribute: "comfortTemperatureMin",
                 entityCategory: "config",
@@ -9184,6 +9399,7 @@ export const definitions: DefinitionWithExtend[] = [
             }),
             m.numeric<"customSonoffSnzb02d", SonoffSnzb02d>({
                 name: "comfort_temperature_max",
+                homeassistant: {name: "Comfort temperature max"},
                 cluster: "customSonoffSnzb02d",
                 attribute: "comfortTemperatureMax",
                 entityCategory: "config",
@@ -9439,6 +9655,7 @@ export const definitions: DefinitionWithExtend[] = [
             withConditionalExpose(sonoffExtend.snzb02dr2RemoteSource(), featureGates.snzb02dr2_support_remote_source),
             m.numeric<"customSonoffSnzb02dr2", SonoffSnzb02dr2>({
                 name: "comfort_temperature_min",
+                homeassistant: {name: "Comfort temperature min"},
                 cluster: "customSonoffSnzb02dr2",
                 attribute: "comfortTemperatureMin",
                 entityCategory: "config",
@@ -9452,6 +9669,7 @@ export const definitions: DefinitionWithExtend[] = [
             }),
             m.numeric<"customSonoffSnzb02dr2", SonoffSnzb02dr2>({
                 name: "comfort_temperature_max",
+                homeassistant: {name: "Comfort temperature max"},
                 cluster: "customSonoffSnzb02dr2",
                 attribute: "comfortTemperatureMax",
                 entityCategory: "config",
@@ -9585,7 +9803,25 @@ export const definitions: DefinitionWithExtend[] = [
             },
         ],
         description: "Motion sensor",
-        extend: [ewelinkBattery(), m.iasZoneAlarm({zoneType: "occupancy", zoneAttributes: ["alarm_1", "battery_low"]})],
+        extend: [
+            ewelinkBattery(),
+            m.iasZoneAlarm({zoneType: "occupancy", zoneAttributes: ["alarm_1", "battery_low"]}),
+            {
+                configure: [
+                    async (device) => {
+                        // Some eWeLink SNZB-05 (water leak sensors) report modelID SNZB-03,
+                        // they can only be told apart by their IAS zoneType.
+                        const {zoneType} = await device.getEndpoint(1).read("ssIasZone", ["zoneType"]);
+
+                        if (zoneType === 0x002a) {
+                            device.modelID = "SNZB-05";
+                            device.save();
+                        }
+                    },
+                ],
+                isModernExtend: true,
+            },
+        ],
     },
     {
         zigbeeModel: ["S26R2ZB"],
@@ -9635,6 +9871,15 @@ export const definitions: DefinitionWithExtend[] = [
         model: "Dongle-PP10",
         vendor: "SONOFF",
         description: "Dongle Plus CC2674P10 (CC2674P10) with router firmware",
+        fromZigbee: [fz.linkquality_from_basic],
+        toZigbee: [],
+        extend: [m.forcePowerSource({powerSource: "Mains (single phase)"})],
+    },
+    {
+        zigbeeModel: ["Dongle-MP10_ZBRouter"],
+        model: "Dongle-MP10",
+        vendor: "SONOFF",
+        description: "Dongle Max CC2674P10 (CC2674P10) with router firmware",
         fromZigbee: [fz.linkquality_from_basic],
         toZigbee: [],
         extend: [m.forcePowerSource({powerSource: "Mains (single phase)"})],
@@ -11084,6 +11329,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "energy_yesterday",
                 label: "Energy yesterday",
+                homeassistant: {name: "Energy yesterday"},
                 cluster: "customClusterEwelink",
                 attribute: "energyYesterday",
                 description: "Electricity consumption for the yesterday",
@@ -11094,6 +11340,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "energy_today",
                 label: "Energy today",
+                homeassistant: {name: "Energy today"},
                 cluster: "customClusterEwelink",
                 attribute: "energyToday",
                 description: "Electricity consumption for the day",
@@ -11104,6 +11351,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "energy_month",
                 label: "Energy this month",
+                homeassistant: {name: "Energy this month"},
                 cluster: "customClusterEwelink",
                 attribute: "energyMonth",
                 description: "Electricity consumption for the month",
@@ -11212,6 +11460,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "energy_yesterday",
                 label: "Energy yesterday",
+                homeassistant: {name: "Energy yesterday"},
                 cluster: "customClusterEwelink",
                 attribute: "energyYesterday",
                 description: "Electricity consumption for the yesterday",
@@ -11222,6 +11471,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "energy_today",
                 label: "Energy today",
+                homeassistant: {name: "Energy today"},
                 cluster: "customClusterEwelink",
                 attribute: "energyToday",
                 description: "Electricity consumption for the day",
@@ -11232,6 +11482,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "energy_month",
                 label: "Energy this month",
+                homeassistant: {name: "Energy this month"},
                 cluster: "customClusterEwelink",
                 attribute: "energyMonth",
                 description: "Electricity consumption for the month",
@@ -11456,7 +11707,7 @@ export const definitions: DefinitionWithExtend[] = [
             }),
             sonoffExtend.externalSwitchTriggerMode(),
             sonoffExtend.inchingControlSet(),
-            sonoffExtend.zbminiR2ExternalSwitchActions(),
+            sonoffExtend.externalSwitchActions({gate: featureGates.zbminir2_external_switch_actions}),
         ],
         ota: true,
         configure: async (device, coordinatorEndpoint) => {
@@ -11666,7 +11917,21 @@ export const definitions: DefinitionWithExtend[] = [
                 access: "STATE_GET",
             }),
             sonoffExtend.externalSwitchTriggerMode(),
+            withConditionalExpose(
+                m.binary<"customClusterEwelink", SonoffEwelink>({
+                    name: "single_switch_mode",
+                    cluster: "customClusterEwelink",
+                    attribute: "singleSwitchMode",
+                    description:
+                        "Single-button pulse mode: both external switch inputs toggle open/close on a short press, and move the curtain until the switch is released on a long press. Only effective while the external trigger mode is pulse.",
+                    valueOn: [true, 1],
+                    valueOff: [false, 0],
+                    entityCategory: "config",
+                }),
+                featureGates.zbrbs_single_switch_mode,
+            ),
         ],
+        version: "0.0.1",
         ota: {
             // imageType is duplicated with SWV-ZFE/ZNE, so modelId is added to prevent OTA firmware error detection
             modelId: "MINI-ZBRBS",
@@ -11697,7 +11962,7 @@ export const definitions: DefinitionWithExtend[] = [
         ota: true,
         extend: [
             m.deviceEndpoints({endpoints: {l1: 1, l2: 2}}),
-            m.commandsOnOff({commands: ["toggle"], endpointNames: ["l1", "l2"]}),
+            sonoffExtend.externalSwitchActions({endpointNames: ["l1", "l2"], gate: featureGates.mini_zb2gs_external_switch_actions}),
             m.onOff({endpointNames: ["l1", "l2"]}),
             sonoffExtend.addCustomClusterEwelink(),
             sonoffExtend.externalSwitchTriggerMode({endpointNames: ["l1", "l2"]}),
@@ -11770,7 +12035,7 @@ export const definitions: DefinitionWithExtend[] = [
             await reporting.bind(endpoint2, coordinatorEndpoint, ["genOnOff", "customClusterEwelink"]);
             await reporting.onOff(endpoint2, {min: 1, max: 1800, change: 0});
             await endpoint2.read("genOnOff", [0x0000, 0x4003], defaultResponseOptions);
-            await endpoint1.read("customClusterEwelink", [0x0014, 0x0015, 0x0016], defaultResponseOptions);
+            await endpoint2.read("customClusterEwelink", [0x0014, 0x0015, 0x0016], defaultResponseOptions);
             await endpoint2.configureReporting<"customClusterEwelink", SonoffEwelink>("customClusterEwelink", [
                 {attribute: "externalTriggerMode", minimumReportInterval: 0, maximumReportInterval: 3600, reportableChange: 1},
             ]);
@@ -11785,7 +12050,7 @@ export const definitions: DefinitionWithExtend[] = [
         ota: true,
         extend: [
             m.deviceEndpoints({endpoints: {l1: 1, l2: 2}}),
-            m.commandsOnOff({commands: ["toggle"], endpointNames: ["l1", "l2"]}),
+            sonoffExtend.externalSwitchActions({endpointNames: ["l1", "l2"], gate: featureGates.mini_zb2gsl_external_switch_actions}),
             m.onOff({endpointNames: ["l1", "l2"]}),
             sonoffExtend.addCustomClusterEwelink(),
             sonoffExtend.externalSwitchTriggerMode({endpointNames: ["l1", "l2"]}),
@@ -11837,7 +12102,7 @@ export const definitions: DefinitionWithExtend[] = [
             await reporting.bind(endpoint2, coordinatorEndpoint, ["genOnOff", "customClusterEwelink"]);
             await reporting.onOff(endpoint2, {min: 1, max: 1800, change: 0});
             await endpoint2.read("genOnOff", [0x0000, 0x4003], defaultResponseOptions);
-            await endpoint1.read("customClusterEwelink", [0x0014, 0x0015, 0x0016], defaultResponseOptions);
+            await endpoint2.read("customClusterEwelink", [0x0014, 0x0015, 0x0016], defaultResponseOptions);
             await endpoint2.configureReporting<"customClusterEwelink", SonoffEwelink>("customClusterEwelink", [
                 {attribute: "externalTriggerMode", minimumReportInterval: 0, maximumReportInterval: 3600, reportableChange: 1},
             ]);
@@ -12350,6 +12615,7 @@ export const definitions: DefinitionWithExtend[] = [
                 attributes: {
                     childLock: {name: "childLock", ID: 0x0000, type: Zcl.DataType.BOOLEAN, write: true},
                     realTimeIrrigationDuration: {name: "realTimeIrrigationDuration", ID: 0x5006, type: Zcl.DataType.UINT32},
+                    realTimeIrrigationVolume: {name: "realTimeIrrigationVolume", ID: 0x5007, type: Zcl.DataType.UINT32},
                     rainDelayEndDatetime: {name: "rainDelayEndDatetime", ID: 0x5014, type: Zcl.DataType.UINT32},
                     hourIrrigationDuration: {name: "hourIrrigationDuration", ID: 0x501c, type: Zcl.DataType.UINT32},
                     manualDefaultSettings: {name: "manualDefaultSettings", ID: 0x501d, type: Zcl.DataType.ARRAY, write: true},
@@ -12475,7 +12741,7 @@ export const definitions: DefinitionWithExtend[] = [
                 attribute: "temperatureCalibration",
                 entityCategory: "config",
                 description:
-                    "Offset to add/subtract to the reported temperature. Note: wake up the device by pressing the button on the back before changing this value.",
+                    "Offset to add/subtract to the reported temperature. Note: wake up the device by pressing the button on the top before changing this value.",
                 valueMin: -50,
                 valueMax: 50,
                 scale: 100,
@@ -12488,7 +12754,7 @@ export const definitions: DefinitionWithExtend[] = [
                 attribute: "humidityCalibration",
                 entityCategory: "config",
                 description:
-                    "Offset to add/subtract to the reported relative humidity. Note: wake up the device by pressing the button on the back before changing this value.",
+                    "Offset to add/subtract to the reported relative humidity. Note: wake up the device by pressing the button on the top before changing this value.",
                 valueMin: -50,
                 valueMax: 50,
                 scale: 100,
@@ -12515,16 +12781,25 @@ export const definitions: DefinitionWithExtend[] = [
                 commands: {},
                 commandsResponse: {},
             }),
+            m.deviceAddCustomCluster("msPressureMeasurement", {
+                name: "msPressureMeasurement",
+                ID: 0x0403,
+                attributes: {
+                    pressure: {name: "pressure", ID: 0x0004, type: Zcl.DataType.INT32},
+                },
+                commands: {},
+                commandsResponse: {},
+            }),
             // official cluster
             m.battery(),
             m.temperature({reporting: {min: 5, max: 3600, change: 20}}),
             m.humidity({valueMin: 0, valueMax: 100, reporting: {min: 5, max: 3600, change: 100}}),
             m.bindCluster({cluster: "genPollCtrl", clusterType: "input"}),
             // attributes
-            m.numeric<"msPressureMeasurement">({
+            m.numeric<"msPressureMeasurement", SonoffSnzb02mPressure>({
                 name: "pressure",
                 cluster: "msPressureMeasurement",
-                attribute: {ID: 0x0004, type: Zcl.DataType.INT32},
+                attribute: "pressure",
                 access: "STATE_GET",
                 description: "Atmospheric pressure in hPa reported via manufacturer attribute 0x0004 (manuCode 0x1286).",
                 unit: "hPa",
@@ -12694,6 +12969,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "energy_today",
                 label: "Energy today",
+                homeassistant: {name: "Energy today"},
                 cluster: "customClusterEwelink",
                 attribute: "energyToday",
                 description: "Electricity consumption for the day",
@@ -12705,6 +12981,7 @@ export const definitions: DefinitionWithExtend[] = [
                 m.numeric<"customClusterEwelink", SonoffEwelink>({
                     name: "output_energy_today",
                     label: "Export energy today",
+                    homeassistant: {name: "Export energy today"},
                     cluster: "customClusterEwelink",
                     attribute: "outputEnergyToday",
                     description: "Energy fed back today through the plug.",
@@ -12717,6 +12994,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "energy_month",
                 label: "Energy this month",
+                homeassistant: {name: "Energy this month"},
                 cluster: "customClusterEwelink",
                 attribute: "energyMonth",
                 description: "Electricity consumption for the month",
@@ -12728,6 +13006,7 @@ export const definitions: DefinitionWithExtend[] = [
                 m.numeric<"customClusterEwelink", SonoffEwelink>({
                     name: "output_energy_month",
                     label: "Export energy this month",
+                    homeassistant: {name: "Export energy this month"},
                     cluster: "customClusterEwelink",
                     attribute: "outputEnergyMonth",
                     description: "Energy fed back this month through the plug.",
@@ -12739,6 +13018,7 @@ export const definitions: DefinitionWithExtend[] = [
             ),
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "energy_yesterday",
+                homeassistant: {name: "Energy yesterday"},
                 cluster: "customClusterEwelink",
                 attribute: "energyYesterday",
                 description: "Electricity consumption for the yesterday",
@@ -12749,6 +13029,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.numeric<"customClusterEwelink", SonoffBasicZB1GSP>({
                 name: "total_energy",
                 label: "Total energy",
+                homeassistant: {name: "Total energy"},
                 cluster: "customClusterEwelink",
                 attribute: "totalEnergyConsumption",
                 description: "Total energy used since the device started.",
@@ -12760,6 +13041,7 @@ export const definitions: DefinitionWithExtend[] = [
                 m.numeric<"customClusterEwelink", SonoffEwelink>({
                     name: "total_output_energy",
                     label: "Total export energy",
+                    homeassistant: {name: "Total export energy"},
                     cluster: "customClusterEwelink",
                     attribute: "totalOutputEnergyConsumption",
                     description: "Total energy fed back through the plug.",
@@ -12996,8 +13278,11 @@ export const definitions: DefinitionWithExtend[] = [
                     localFastSceneConfiguration: {name: "localFastSceneConfiguration", ID: 0x7016, type: Zcl.DataType.ARRAY, write: true},
                     outputEnergyToday: {name: "outputEnergyToday", ID: 0x7018, type: Zcl.DataType.UINT32},
                     outputEnergyMonth: {name: "outputEnergyMonth", ID: 0x7019, type: Zcl.DataType.UINT32},
+                    dailyRunTime: {name: "dailyRunTime", ID: 0x701c, type: Zcl.DataType.UINT32},
+                    totalRunTime: {name: "totalRunTime", ID: 0x701d, type: Zcl.DataType.UINT32},
                     totalEnergyConsumption: {name: "totalEnergyConsumption", ID: 0x701e, type: Zcl.DataType.UINT32},
                     totalOutputEnergyConsumption: {name: "totalOutputEnergyConsumption", ID: 0x701f, type: Zcl.DataType.UINT32},
+                    voltageFrequency: {name: "voltageFrequency", ID: 0x7029, type: Zcl.DataType.UINT32},
                 },
                 commands: {
                     protocolData: {name: "protocolData", ID: 0x01, parameters: [{name: "data", type: Zcl.BuffaloZclDataType.LIST_UINT8}]},
@@ -13088,7 +13373,40 @@ export const definitions: DefinitionWithExtend[] = [
                 access: "STATE_GET",
             }),
             m.numeric<"customClusterEwelink", SonoffEwelink>({
+                name: "frequency",
+                label: "Frequency",
+                cluster: "customClusterEwelink",
+                attribute: "voltageFrequency",
+                description: "Power frequency.",
+                unit: "Hz",
+                scale: 100,
+                access: "STATE_GET",
+            }),
+            m.numeric<"customClusterEwelink", SonoffEwelink>({
+                name: "today_runtime",
+                label: "Today runtime",
+                cluster: "customClusterEwelink",
+                attribute: "dailyRunTime",
+                description: "Accumulated runtime today.",
+                unit: "h",
+                scale: 3600,
+                precision: 2,
+                access: "STATE_GET",
+            }),
+            m.numeric<"customClusterEwelink", SonoffEwelink>({
+                name: "lifetime",
+                label: "Lifetime",
+                cluster: "customClusterEwelink",
+                attribute: "totalRunTime",
+                description: "Total accumulated runtime.",
+                unit: "h",
+                scale: 3600,
+                precision: 2,
+                access: "STATE_GET",
+            }),
+            m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "energy_today",
+                homeassistant: {name: "Energy today"},
                 cluster: "customClusterEwelink",
                 attribute: "energyToday",
                 description: "Energy used today by the connected load.",
@@ -13099,6 +13417,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "output_energy_today",
                 label: "Export energy today",
+                homeassistant: {name: "Export energy today"},
                 cluster: "customClusterEwelink",
                 attribute: "outputEnergyToday",
                 description: "Energy fed back today through the plug.",
@@ -13109,6 +13428,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "energy_month",
                 label: "Energy this month",
+                homeassistant: {name: "Energy this month"},
                 cluster: "customClusterEwelink",
                 attribute: "energyMonth",
                 description: "Energy used this month by the connected load.",
@@ -13119,6 +13439,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "output_energy_month",
                 label: "Export energy this month",
+                homeassistant: {name: "Export energy this month"},
                 cluster: "customClusterEwelink",
                 attribute: "outputEnergyMonth",
                 description: "Energy fed back this month through the plug.",
@@ -13128,6 +13449,7 @@ export const definitions: DefinitionWithExtend[] = [
             }),
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "total_energy",
+                homeassistant: {name: "Total energy"},
                 cluster: "customClusterEwelink",
                 attribute: "totalEnergyConsumption",
                 description: "Total energy used by the connected load.",
@@ -13138,6 +13460,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "total_output_energy",
                 label: "Total export energy",
+                homeassistant: {name: "Total export energy"},
                 cluster: "customClusterEwelink",
                 attribute: "totalOutputEnergyConsumption",
                 description: "Total energy fed back through the plug.",
@@ -13237,6 +13560,7 @@ export const definitions: DefinitionWithExtend[] = [
             }),
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "energy_today",
+                homeassistant: {name: "Energy today"},
                 cluster: "customClusterEwelink",
                 attribute: "energyToday",
                 description: "Energy used today by the connected load.",
@@ -13247,6 +13571,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "output_energy_today",
                 label: "Export energy today",
+                homeassistant: {name: "Export energy today"},
                 cluster: "customClusterEwelink",
                 attribute: "outputEnergyToday",
                 description: "Energy fed back today through the plug.",
@@ -13257,6 +13582,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "energy_month",
                 label: "Energy this month",
+                homeassistant: {name: "Energy this month"},
                 cluster: "customClusterEwelink",
                 attribute: "energyMonth",
                 description: "Energy used this month by the connected load.",
@@ -13267,6 +13593,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "output_energy_month",
                 label: "Export energy this month",
+                homeassistant: {name: "Export energy this month"},
                 cluster: "customClusterEwelink",
                 attribute: "outputEnergyMonth",
                 description: "Energy fed back this month through the plug.",
@@ -13277,6 +13604,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "total_energy",
                 label: "Total energy",
+                homeassistant: {name: "Total energy"},
                 cluster: "customClusterEwelink",
                 attribute: "totalEnergyConsumption",
                 description: "Total energy used by the connected load.",
@@ -13287,6 +13615,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "total_output_energy",
                 label: "Total export energy",
+                homeassistant: {name: "Total export energy"},
                 cluster: "customClusterEwelink",
                 attribute: "totalOutputEnergyConsumption",
                 description: "Total energy fed back through the plug.",
@@ -13629,6 +13958,7 @@ export const definitions: DefinitionWithExtend[] = [
             m.bindCluster({cluster: "genPollCtrl", clusterType: "input"}),
             m.numeric<"customClusterEwelink", SonoffSnzb02ul>({
                 name: "comfort_temperature_min",
+                homeassistant: {name: "Comfort temperature min"},
                 cluster: "customClusterEwelink",
                 attribute: "comfortTemperatureMin",
                 entityCategory: "config",
@@ -13642,6 +13972,7 @@ export const definitions: DefinitionWithExtend[] = [
             }),
             m.numeric<"customClusterEwelink", SonoffSnzb02ul>({
                 name: "comfort_temperature_max",
+                homeassistant: {name: "Comfort temperature max"},
                 cluster: "customClusterEwelink",
                 attribute: "comfortTemperatureMax",
                 entityCategory: "config",
@@ -13829,6 +14160,7 @@ export const definitions: DefinitionWithExtend[] = [
             }),
             m.numeric<"seMetering">({
                 name: "total_energy_consumption",
+                homeassistant: {name: "Total energy consumption"},
                 cluster: "seMetering",
                 attribute: "currentSummDelivered",
                 description: "CurrentSummationDelivered",
@@ -13852,6 +14184,7 @@ export const definitions: DefinitionWithExtend[] = [
             }),
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "energy_today",
+                homeassistant: {name: "Energy today"},
                 cluster: "customClusterEwelink",
                 attribute: "energyToday",
                 description: "Electricity consumption for the day",
@@ -13861,6 +14194,7 @@ export const definitions: DefinitionWithExtend[] = [
             }),
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "energy_month",
+                homeassistant: {name: "Energy month"},
                 cluster: "customClusterEwelink",
                 attribute: "energyMonth",
                 description: "Electricity consumption for the month",
@@ -13870,6 +14204,7 @@ export const definitions: DefinitionWithExtend[] = [
             }),
             m.numeric<"customClusterEwelink", SonoffEwelink>({
                 name: "energy_yesterday",
+                homeassistant: {name: "Energy yesterday"},
                 cluster: "customClusterEwelink",
                 attribute: "energyYesterday",
                 description: "Electricity consumption for the yesterday",
@@ -14074,6 +14409,7 @@ export const definitions: DefinitionWithExtend[] = [
                 access: "ALL",
             }),
         ],
+        ota: true,
     },
     {
         zigbeeModel: ["SNZT-04P"],
@@ -14095,5 +14431,319 @@ export const definitions: DefinitionWithExtend[] = [
             }),
             m.battery({percentageReportingConfig: {min: 3600, max: 7200, change: 2}}),
         ],
+        ota: true,
+    },
+    {
+        zigbeeModel: ["SS-Z2N"],
+        model: "SS-Z2N",
+        vendor: "SONOFF",
+        description: "Soil temperature and humidity sensor",
+        extend: [
+            m.deviceAddCustomCluster("customClusterEwelink", {
+                name: "customClusterEwelink",
+                ID: 0xfc11,
+                attributes: {
+                    temperatureUnits: {name: "temperatureUnits", ID: 0x0007, type: Zcl.DataType.UINT16, write: true},
+                    temperatureCalibration: {name: "temperatureCalibration", ID: 0x2003, type: Zcl.DataType.INT16, write: true},
+                    humidityCalibration: {name: "humidityCalibration", ID: 0x2004, type: Zcl.DataType.INT16, write: true},
+                    measureInterval: {name: "measureInterval", ID: 0x202d, type: Zcl.DataType.UINT16, write: true},
+                    temperatureMaxInHour: {name: "temperatureMaxInHour", ID: 0x2008, type: Zcl.DataType.INT16},
+                    temperatureMinInHour: {name: "temperatureMinInHour", ID: 0x2009, type: Zcl.DataType.INT16},
+                    temperatureAverInHour: {name: "temperatureAverInHour", ID: 0x200a, type: Zcl.DataType.INT16},
+                    humidityMaxInHour: {name: "humidityMaxInHour", ID: 0x200b, type: Zcl.DataType.UINT16},
+                    humidityMinInHour: {name: "humidityMinInHour", ID: 0x200c, type: Zcl.DataType.UINT16},
+                    humidityAverInHour: {name: "humidityAverInHour", ID: 0x200d, type: Zcl.DataType.UINT16},
+                    comfortTemperatureMax: {name: "comfortTemperatureMax", ID: 0x0003, type: Zcl.DataType.INT16, write: true},
+                    comfortTemperatureMin: {name: "comfortTemperatureMin", ID: 0x0004, type: Zcl.DataType.INT16, write: true},
+                    comfortHumidityMin: {name: "comfortHumidityMin", ID: 0x0005, type: Zcl.DataType.UINT16, write: true},
+                    comfortHumidityMax: {name: "comfortHumidityMax", ID: 0x0006, type: Zcl.DataType.UINT16, write: true},
+                    frostProtectionTemperature: {name: "frostProtectionTemperature", ID: 0x6002, type: Zcl.DataType.INT16, write: true},
+                    temperatureThresholdEnable: {name: "temperatureThresholdEnable", ID: 0x202a, type: Zcl.DataType.UINT8, write: true},
+                    humidityThresholdEnable: {name: "humidityThresholdEnable", ID: 0x202b, type: Zcl.DataType.UINT8, write: true},
+                    frostThresholdEnable: {name: "frostThresholdEnable", ID: 0x202c, type: Zcl.DataType.UINT8, write: true},
+                },
+                commands: {
+                    refreshMeasurements: {name: "refreshMeasurements", ID: 0x00, parameters: []},
+                },
+                commandsResponse: {},
+            }),
+            sonoffExtend.ssZ2nRefreshMeasurements(),
+            // official clusters
+            m.battery({
+                // Battery percentage reporting interval from the firmware spec (1620s / 1740s / Δ2%).
+                percentageReportingConfig: {min: 1620, max: 1740, change: 2},
+            }),
+            m.temperature({valueMin: -20, valueMax: 60, reporting: {min: 120, max: 3600, change: 100}}),
+            m.soilMoisture({valueMin: 0, valueMax: 100, reporting: {min: 120, max: 3600, change: 300}}),
+            m.bindCluster({cluster: "genPollCtrl", clusterType: "input"}),
+
+            // attributes
+            m.numeric<"customClusterEwelink", SonoffSsZ2n>({
+                name: "temperature_calibration",
+                cluster: "customClusterEwelink",
+                attribute: "temperatureCalibration",
+                entityCategory: "config",
+                description: "Offset to add/subtract to the reported temperature.",
+                valueMin: -10,
+                valueMax: 10,
+                scale: 100,
+                valueStep: 0.1,
+                unit: "°C",
+            }),
+            m.numeric<"customClusterEwelink", SonoffSsZ2n>({
+                name: "humidity_calibration",
+                cluster: "customClusterEwelink",
+                attribute: "humidityCalibration",
+                entityCategory: "config",
+                description: "Offset added to or subtracted from the reported soil moisture value.",
+                valueMin: -100,
+                valueMax: 100,
+                scale: 100,
+                valueStep: 1,
+                unit: "%",
+            }),
+            m.enumLookup<"customClusterEwelink", SonoffSsZ2n>({
+                name: "measure_interval",
+                lookup: {"2_min": 0, "5_min": 1, "15_min": 2, "30_min": 3, "1_hour": 4, "2_hours": 5},
+                cluster: "customClusterEwelink",
+                attribute: "measureInterval",
+                entityCategory: "config",
+                description: "Set the interval for scheduled measurements and reports. Default: 5 minutes.",
+            }),
+            m.numeric<"customClusterEwelink", SonoffSsZ2n>({
+                name: "comfort_temperature_min",
+                homeassistant: {name: "Comfort temperature min"},
+                cluster: "customClusterEwelink",
+                attribute: "comfortTemperatureMin",
+                entityCategory: "config",
+                description: "Soil temperature below this value is classified as low. Default: 8 °C.",
+                valueMin: -20,
+                valueMax: 60,
+                valueStep: 1,
+                scale: 100,
+                unit: "°C",
+                tzConvertSet: ssZ2nThresholdConvertSet({
+                    attribute: "comfortTemperatureMin",
+                    statusKey: "temperature_status",
+                    pairKey: "comfort_temperature_max",
+                    measureKey: "temperature",
+                    isMin: true,
+                }),
+            }),
+            m.numeric<"customClusterEwelink", SonoffSsZ2n>({
+                name: "comfort_temperature_max",
+                homeassistant: {name: "Comfort temperature max"},
+                cluster: "customClusterEwelink",
+                attribute: "comfortTemperatureMax",
+                entityCategory: "config",
+                description: "Soil temperature above this value is classified as high. Default: 32 °C.",
+                valueMin: -20,
+                valueMax: 60,
+                valueStep: 1,
+                scale: 100,
+                unit: "°C",
+                tzConvertSet: ssZ2nThresholdConvertSet({
+                    attribute: "comfortTemperatureMax",
+                    statusKey: "temperature_status",
+                    pairKey: "comfort_temperature_min",
+                    measureKey: "temperature",
+                    isMin: false,
+                }),
+            }),
+            // SS-Z2N: derived soil temperature status, recomputed on every temperature report.
+            m.enumLookup({
+                name: "temperature_status",
+                cluster: "msTemperatureMeasurement",
+                // Derived expose with no attribute of its own: `measuredValue` is only a placeholder and `lookup` just supplies the enum keys.
+                attribute: "measuredValue",
+                lookup: {Low: 0, Normal: 1, High: 2},
+                access: "STATE",
+                label: "Soil temperature status",
+                description: "Current soil temperature status based on the configured temperature thresholds.",
+                fzConvert: (model, msg, publish, options, meta) => {
+                    const measuredValue = msg.data.measuredValue;
+                    if (typeof measuredValue !== "number") {
+                        return;
+                    }
+                    const status = ssZ2nClassifyStatus(measuredValue / 100, meta.state?.comfort_temperature_min, meta.state?.comfort_temperature_max);
+                    return status === undefined ? undefined : {temperature_status: status};
+                },
+            }),
+            m.numeric<"customClusterEwelink", SonoffSsZ2n>({
+                name: "comfort_humidity_min",
+                cluster: "customClusterEwelink",
+                attribute: "comfortHumidityMin",
+                entityCategory: "config",
+                description: "Soil moisture below this value is classified as low. Default: 15%.",
+                valueMin: 1,
+                valueMax: 99,
+                valueStep: 1,
+                scale: 100,
+                unit: "%",
+                tzConvertSet: ssZ2nThresholdConvertSet({
+                    attribute: "comfortHumidityMin",
+                    statusKey: "humidity_status",
+                    pairKey: "comfort_humidity_max",
+                    measureKey: "soil_moisture",
+                    isMin: true,
+                }),
+            }),
+            m.numeric<"customClusterEwelink", SonoffSsZ2n>({
+                name: "comfort_humidity_max",
+                cluster: "customClusterEwelink",
+                attribute: "comfortHumidityMax",
+                entityCategory: "config",
+                description: "Soil moisture above this value is classified as high. Default: 30%.",
+                valueMin: 1,
+                valueMax: 99,
+                valueStep: 1,
+                scale: 100,
+                unit: "%",
+                tzConvertSet: ssZ2nThresholdConvertSet({
+                    attribute: "comfortHumidityMax",
+                    statusKey: "humidity_status",
+                    pairKey: "comfort_humidity_min",
+                    measureKey: "soil_moisture",
+                    isMin: false,
+                }),
+            }),
+            // SS-Z2N: derived soil moisture status, recomputed on every moisture report.
+            m.enumLookup({
+                name: "humidity_status",
+                cluster: "msSoilMoisture",
+                // Derived expose with no attribute of its own: `measuredValue` is only a placeholder and `lookup` just supplies the enum keys.
+                attribute: "measuredValue",
+                lookup: {Low: 0, Normal: 1, High: 2},
+                access: "STATE",
+                label: "Soil moisture status",
+                description: "Current soil moisture status based on the configured moisture thresholds.",
+                fzConvert: (model, msg, publish, options, meta) => {
+                    const measuredValue = msg.data.measuredValue;
+                    if (typeof measuredValue !== "number") {
+                        return;
+                    }
+                    const status = ssZ2nClassifyStatus(measuredValue / 100, meta.state?.comfort_humidity_min, meta.state?.comfort_humidity_max);
+                    return status === undefined ? undefined : {humidity_status: status};
+                },
+            }),
+            // Frost alarm range -10~20℃ with default 5℃, per PRD §5.8.4.
+            m.numeric<"customClusterEwelink", SonoffSsZ2n>({
+                name: "frost_protection_temperature",
+                cluster: "customClusterEwelink",
+                attribute: "frostProtectionTemperature",
+                entityCategory: "config",
+                description: "Soil temperature below this value indicates a risk of frost. Default: 5 °C.",
+                valueMin: -10,
+                valueMax: 20,
+                valueStep: 1,
+                scale: 100,
+                unit: "°C",
+                tzConvertSet: ssZ2nFrostThresholdConvertSet,
+            }),
+            // SS-Z2N: derived frost risk status, recomputed on every temperature report.
+            m.enumLookup({
+                name: "frost_risk_status",
+                cluster: "msTemperatureMeasurement",
+                // Derived expose with no attribute of its own: `measuredValue` is only a placeholder and `lookup` just supplies the enum keys.
+                attribute: "measuredValue",
+                lookup: {Risk: 0, Normal: 1},
+                access: "STATE",
+                label: "Frost risk status",
+                description: "Current frost risk status based on the configured frost risk temperature threshold.",
+                fzConvert: (model, msg, publish, options, meta) => {
+                    const measuredValue = msg.data.measuredValue;
+                    if (typeof measuredValue !== "number") {
+                        return;
+                    }
+                    const frostRisk = ssZ2nClassifyFrostRisk(measuredValue / 100, meta.state?.frost_protection_temperature);
+                    return frostRisk === undefined ? undefined : {frost_risk_status: frostRisk};
+                },
+            }),
+            m.binary<"customClusterEwelink", SonoffSsZ2n>({
+                name: "temperature_threshold_enable",
+                cluster: "customClusterEwelink",
+                attribute: "temperatureThresholdEnable",
+                entityCategory: "config",
+                description:
+                    "Enables/disables the temperature threshold alarm. Note: wake up the device by pressing the button on the back before changing this value.",
+                valueOn: ["ON", 0x01],
+                valueOff: ["OFF", 0x00],
+            }),
+            m.binary<"customClusterEwelink", SonoffSsZ2n>({
+                name: "humidity_threshold_enable",
+                cluster: "customClusterEwelink",
+                attribute: "humidityThresholdEnable",
+                entityCategory: "config",
+                description:
+                    "Enables/disables the humidity threshold alarm. Note: wake up the device by pressing the button on the back before changing this value.",
+                valueOn: ["ON", 0x01],
+                valueOff: ["OFF", 0x00],
+            }),
+            m.binary<"customClusterEwelink", SonoffSsZ2n>({
+                name: "frost_threshold_enable",
+                cluster: "customClusterEwelink",
+                attribute: "frostThresholdEnable",
+                entityCategory: "config",
+                description:
+                    "Enables/disables the frost protection threshold alarm. Note: wake up the device by pressing the button on the back before changing this value.",
+                valueOn: ["ON", 0x01],
+                valueOff: ["OFF", 0x00],
+            }),
+            m.numeric<"customClusterEwelink", SonoffSsZ2n>({
+                name: "temperature_max_in_hour",
+                cluster: "customClusterEwelink",
+                attribute: "temperatureMaxInHour",
+                description: "Maximum temperature recorded in the last hour",
+                access: "STATE_GET",
+                scale: 100,
+                unit: "°C",
+            }),
+            m.numeric<"customClusterEwelink", SonoffSsZ2n>({
+                name: "temperature_min_in_hour",
+                cluster: "customClusterEwelink",
+                attribute: "temperatureMinInHour",
+                description: "Minimum temperature recorded in the last hour",
+                access: "STATE_GET",
+                scale: 100,
+                unit: "°C",
+            }),
+            m.numeric<"customClusterEwelink", SonoffSsZ2n>({
+                name: "temperature_aver_in_hour",
+                cluster: "customClusterEwelink",
+                attribute: "temperatureAverInHour",
+                description: "Average temperature recorded in the last hour",
+                access: "STATE_GET",
+                scale: 100,
+                unit: "°C",
+            }),
+            m.numeric<"customClusterEwelink", SonoffSsZ2n>({
+                name: "humidity_max_in_hour",
+                cluster: "customClusterEwelink",
+                attribute: "humidityMaxInHour",
+                description: "Maximum humidity recorded in the last hour",
+                access: "STATE_GET",
+                scale: 100,
+                unit: "%",
+            }),
+            m.numeric<"customClusterEwelink", SonoffSsZ2n>({
+                name: "humidity_min_in_hour",
+                cluster: "customClusterEwelink",
+                attribute: "humidityMinInHour",
+                description: "Minimum humidity recorded in the last hour",
+                access: "STATE_GET",
+                scale: 100,
+                unit: "%",
+            }),
+            m.numeric<"customClusterEwelink", SonoffSsZ2n>({
+                name: "humidity_aver_in_hour",
+                cluster: "customClusterEwelink",
+                attribute: "humidityAverInHour",
+                description: "Average humidity recorded in the last hour",
+                access: "STATE_GET",
+                scale: 100,
+                unit: "%",
+            }),
+        ],
+        ota: true,
     },
 ];

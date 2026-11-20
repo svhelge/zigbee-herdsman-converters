@@ -1797,6 +1797,8 @@ export type ManufacturerZoneAttribute = {
 export interface IasArgs {
     zoneType: IasZoneType;
     zoneAttributes: IasZoneAttribute[];
+    /** Only process IAS messages from this endpoint. */
+    endpointId?: number;
     alarmTimeout?: boolean;
     keepAliveTimeout?: (device: Device) => number;
     zoneStatusReporting?: boolean | Partial<ReportingConfigWithoutAttribute>;
@@ -1867,6 +1869,7 @@ export function iasZoneAlarm(args: IasArgs): ModernExtend {
                   ]
                 : [],
             convert: (model, msg, publish, options, meta) => {
+                if (args.endpointId !== undefined && msg.endpoint.ID !== args.endpointId) return;
                 if (args.alarmTimeout) {
                     const timeout = options?.[timeoutProperty] != null ? Number(options[timeoutProperty]) : 90;
                     clearTimeout(globalStore.getValue(msg.endpoint, "timer"));
@@ -2906,6 +2909,8 @@ export interface NumericArgs<Cl extends string | number, Custom extends TCustomC
     entityCategory?: "config" | "diagnostic";
     precision?: number | (number | undefined)[];
     fzConvert?: Fz.Converter<Cl, Custom, ["attributeReport", "readResponse"]>["convert"];
+    tzConvertSet?: Tz.Converter["convertSet"];
+    tzConvertGet?: Tz.Converter["convertGet"];
     homeassistant?: exposes.HomeAssistant | (exposes.HomeAssistant | undefined)[];
 }
 export function numeric<Cl extends string | number, Custom extends TCustomCluster | undefined = undefined>(
@@ -2927,6 +2932,8 @@ export function numeric<Cl extends string | number, Custom extends TCustomCluste
         entityCategory,
         precision,
         fzConvert,
+        tzConvertSet,
+        tzConvertGet,
         homeassistant,
     } = args;
 
@@ -3108,11 +3115,12 @@ export function numeric<Cl extends string | number, Custom extends TCustomCluste
             key: [uniqName],
             convertSet:
                 access & ea.SET
-                    ? async (entity, key, value, meta) => {
+                    ? (tzConvertSet ??
+                      (async (entity, key, value, meta) => {
                           assertNumber(value, key);
                           let payloadValue = value;
                           if (scale !== undefined) {
-                              payloadValue = typeof scale === "number" ? payloadValue * scale : scale(payloadValue, "to");
+                              payloadValue = typeof scale === "number" ? Math.round(payloadValue * scale) : scale(payloadValue, "to");
                           }
                           assertNumber(payloadValue);
 
@@ -3129,18 +3137,19 @@ export function numeric<Cl extends string | number, Custom extends TCustomCluste
                               zigbeeCommandOptions,
                           );
                           return {state: {[key]: value}};
-                      }
+                      }))
                     : undefined,
             convertGet:
                 access & ea.GET
-                    ? async (entity, key, meta) => {
+                    ? (tzConvertGet ??
+                      (async (entity, key, meta) => {
                           await determineEndpoint(entity, meta, cluster).read(
                               cluster,
                               // XXX: too dynamic for typing
                               [attributeKey] as ClusterOrRawAttributeKeys<Cl>,
                               zigbeeCommandOptions,
                           );
-                      }
+                      }))
                     : undefined,
         };
         toZigbee.push(tZ);
